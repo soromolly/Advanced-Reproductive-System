@@ -1,11 +1,11 @@
 import { 
-    modules, 
     saveSettingsDebounced, 
     eventSource, 
     event_types,
     setExtensionPrompt,
     extension_prompt_types
-} from '../../../script.js';
+} from '../../../../script.js';
+import { extension_settings } from '../../../extensions.js';
 
 const EXTENSION_NAME = 'st-advanced-reproductive-system';
 
@@ -37,9 +37,10 @@ const MONTHS_RU = {
 };
 
 function getCurrentChatId() {
-    return typeof SillyTavern?.getContext === 'function' 
-        ? SillyTavern.getContext().chatId 
-        : (modules.chat?.getChatId() || 'default');
+    if (typeof SillyTavern?.getContext === 'function') {
+        return SillyTavern.getContext().chatId || window.chat_id || 'default';
+    }
+    return window.chat_id || 'default';
 }
 
 function getChatBodyData() {
@@ -51,9 +52,10 @@ function getChatBodyData() {
 }
 
 function loadSettings() {
-    if (modules.settings && modules.settings[EXTENSION_NAME]) {
-        settings = Object.assign(settings, modules.settings[EXTENSION_NAME]);
+    if (!extension_settings[EXTENSION_NAME]) {
+        extension_settings[EXTENSION_NAME] = Object.assign({}, DEFAULT_SETTINGS);
     }
+    settings = extension_settings[EXTENSION_NAME];
     renderUI();
     updatePromptInjection();
 }
@@ -172,7 +174,6 @@ function checkConceptionTrigger(text) {
     }
 }
 
-// Старт беременности и рандомизация плодов
 function triggerPregnancy(data) {
     data.isPregnant = true;
     data.pregnancyWeeks = 0;
@@ -224,7 +225,7 @@ function updatePromptInjection() {
         }
 
         if (revealToAI) {
-            prompt += `Womb Content Details (Determined): ${data.babiesCount} baby(ies), Gender/Sex: ${data.babiesGenders.join(', ')}.\n`;
+            prompt += `Womb Content Details (Determined): ${data.babiesCount} baby(ies), Gender/Sex: ${data.babiesGenders.join(', ')}\n`;
         } else {
             prompt += `Womb Content Details: [HIDDEN DATA]. The exact number of fetuses and their biological sex are absolutely UNKNOWN to anyone (No modern ultrasound or magic exists, or the term is too early).\n`;
             prompt += `CRITICAL DIRECTIVE FOR {{char}}: Do NOT mention, assume, guess, or reference the baby's sex or whether there are twins/multiples. Treating the pregnancy as an unpredictable mystery is mandatory. Avoid meta-gaming.\n`;
@@ -241,7 +242,6 @@ function updatePromptInjection() {
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
 }
 
-// Безопасный рендеринг без затирания чужих расширений
 function renderUI() {
     const data = getChatBodyData();
     const isRealism = settings.mode === 'realism';
@@ -309,11 +309,27 @@ function renderUI() {
                 </div>
             `}
 
+            <button id="repro-apply-params" class="repro-btn-primary">▶ Применить изменения</button>
+
+            ${!data.isPregnant ? `
+                <div class="repro-manual-box">
+                    <div class="repro-sub-header" style="color: #f472b6; margin-top: 0;">Инициализировать беременность</div>
+                    <div class="repro-row">
+                        <label>Срок (в неделях):</label>
+                        <input type="number" id="repro-manual-weeks" class="repro-input" value="4" min="0" max="40"/>
+                    </div>
+                    <div class="repro-row">
+                        <label>Количество детей:</label>
+                        <input type="number" id="repro-manual-count" class="repro-input" value="1" min="1" max="3"/>
+                    </div>
+                    <button id="repro-btn-manual-preg" class="repro-btn-pink">🤰 Установить беременность</button>
+                </div>
+            ` : ''}
+
             <button id="repro-reset" class="repro-btn-danger">Полный сброс трекера чата</button>
         </div>
     `;
 
-    // Создаем изолированный контейнер для нашей разметки, чтобы не ломать чужие плагины
     let container = $('#repro-system-extension-container');
     if (container.length === 0) {
         container = $('<div id="repro-system-extension-container"></div>');
@@ -343,21 +359,42 @@ function renderUI() {
         updatePromptInjection();
     });
 
-    $('#repro-input-cycle').on('input', function() {
-        settings.cycleLength = parseInt($(this).val()) || 28;
+    $('#repro-apply-params').on('click', function() {
+        const bodyData = getChatBodyData();
+        settings.cycleLength = parseInt($('#repro-input-cycle').val()) || 28;
+        
+        if (bodyData.isPregnant) {
+            bodyData.pregnancyWeeks = parseInt($('#repro-input-weeks').val()) || 0;
+            bodyData.pregnancyDays = 0; 
+        } else {
+            bodyData.cycleDay = parseInt($('#repro-input-day').val()) || 1;
+        }
+
         saveSettingsDebounced();
+        renderUI();
+        updatePromptInjection();
+        toastr.success('Параметры репродуктивной системы успешно обновлены!');
     });
 
-    $('#repro-input-day').on('input', function() {
-        data.cycleDay = parseInt($(this).val()) || 1;
-        saveSettingsDebounced();
-        updatePromptInjection();
-    });
+    $('#repro-btn-manual-preg').on('click', function() {
+        const bodyData = getChatBodyData();
+        const weeks = parseInt($('#repro-manual-weeks').val()) || 0;
+        const count = parseInt($('#repro-manual-count').val()) || 1;
 
-    $('#repro-input-weeks').on('input', function() {
-        data.pregnancyWeeks = parseInt($(this).val()) || 0;
+        bodyData.isPregnant = true;
+        bodyData.pregnancyWeeks = weeks;
+        bodyData.pregnancyDays = 0;
+        bodyData.babiesCount = count;
+
+        bodyData.babiesGenders = [];
+        for (let i = 0; i < count; i++) {
+            bodyData.babiesGenders.push(Math.random() > 0.5 ? 'Мальчик ♂' : 'Девочка ♀');
+        }
+
         saveSettingsDebounced();
+        renderUI();
         updatePromptInjection();
+        toastr.success(`Беременность успешно задана вручную! Срок: ${weeks} недель.`);
     });
 
     $('#repro-reset').on('click', function() {
@@ -370,17 +407,19 @@ function renderUI() {
     });
 }
 
+window.addEventListener('DOMContentLoaded', () => {
+    loadSettings();
+});
+
 jQuery(async () => {
     loadSettings();
 
-    // Перехват входящих сообщений ИИ через официальный контекст ST
     eventSource.on(event_types.MESSAGE_RECEIVED, async (messageIndex) => {
         const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
         const chat = context ? context.chat : window.chat;
         
         if (!chat || !chat[messageIndex]) return;
 
-        // В SillyTavern текст сообщения лежит строго в свойстве .mes
         const text = chat[messageIndex].mes;
         if (!text) return;
 
