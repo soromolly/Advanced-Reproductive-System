@@ -30,7 +30,7 @@ const DEFAULT_BODY_DATA = {
 };
 
 let settings = Object.assign({}, DEFAULT_SETTINGS);
-let isMenuCollapsed = true; // По умолчанию всегда свернуто, как у нативных плагинов
+let isMenuCollapsed = true; // По умолчанию скрыто, чтобы экономить место на мобильных
 
 const MONTHS_RU = {
     'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3, 'мая': 4, 'июня': 5,
