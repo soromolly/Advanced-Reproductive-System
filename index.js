@@ -33,9 +33,8 @@ const DEFAULT_BODY_DATA = {
     rolledTrimesters: { 1: false, 2: false, 3: false },
     activeComplication: null,
 
-    // Новые послеродовые параметры
     postpartumDays: 0,
-    childrenList: [] // Хранилище рожденных детей
+    childrenList: [] 
 };
 
 let settings = Object.assign({}, DEFAULT_SETTINGS);
@@ -100,7 +99,7 @@ const TRANSLATIONS = {
         menstruation: 'Menstruation 🩸', ovulation: 'Ovulation (Conception Window) ✨',
         follicularLuteal: 'Follicular/Luteal Phase', heat: 'Heat (Peak Fertility) 🔥', quiescence: 'Quiescence Period',
         symptomsTitle: '🎯 Body Symptoms:', fetusTitle: '👶 Fetus & Body Development:',
-        complicationTitle: '⚠️ Medical Complication:', cureBtn: '💊 Treat / Alleviate Complication',
+        complicationTitle: '⚠️ Medical Complication:', cureBtn: '💊 Treat / Almacen Complication',
         postpartumPhase: 'Postpartum Recovery 🩹', newbornTitle: '🍼 Children in Family:',
         giveBirthBtn: '🔔 GIVE BIRTH (Story Trigger)'
     }
@@ -273,12 +272,11 @@ function handleTimeProgression(text) {
 function advanceBodyTime(days) {
     const data = getChatBodyData();
     
-    // Если активен послеродовой период — накручиваем его и держим цикл замороженным
     if (data.postpartumDays > 0) {
         data.postpartumDays += days;
         if (data.postpartumDays > 40) {
             data.postpartumDays = 0;
-            data.cycleDay = 1; // Возвращаются первые месячные восстановления
+            data.cycleDay = 1; 
             toastr.success("Послеродовое восстановление завершено. Репродуктивный цикл запущен.");
         }
         return;
@@ -336,22 +334,18 @@ function triggerPregnancy(data) {
         data.babiesGenders.push(Math.random() > 0.5 ? (lang === 'ru' ? 'Мальчик ♂' : 'Boy ♂') : (lang === 'ru' ? 'Девочка ♀' : 'Girl ♀'));
     }
 
-    // ТАЙНЫЙ КОНВЕРТ ГЕНЕТИКИ: Просчитываем скрытые параметры ребенка заранее на основе карточки!
     data.hiddenGenetics = Array(data.babiesCount).fill().map(() => generateChildGenetics());
 
     saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.success(getText('toastConception'));
 }
 
-/**
- * Логика сюжетного триггера родов
- */
 function processBirthTrigger() {
     const data = getChatBodyData();
     if (!data.isPregnant) return;
 
-    // Вскрываем скрытый конверт генетики и переносим детей в семейный список
+    // ИСПРАВЛЕНИЕ ЗДЕСЬ: Если это старый сейв и hiddenGenetics пуст, генерируем реальное описание на лету!
     for (let i = 0; i < data.babiesCount; i++) {
-        const gen = data.hiddenGenetics?.[i] || { eyes: "мамины", hair: "папины" };
+        const gen = (data.hiddenGenetics && data.hiddenGenetics[i]) ? data.hiddenGenetics[i] : generateChildGenetics();
         data.childrenList.push({
             id: Date.now() + i,
             gender: data.babiesGenders[i],
@@ -360,13 +354,11 @@ function processBirthTrigger() {
         });
     }
 
-    // Переводим статус в послеродовой период
     data.isPregnant = false;
     data.pregnancyWeeks = 0; data.pregnancyDays = 0; data.babiesCount = 0; data.babiesGenders = []; data.activeComplication = null;
     data.hiddenGenetics = [];
-    data.postpartumDays = 1; // Стартуем 40 дней восстановления
+    data.postpartumDays = 1; 
 
-    // Отправляем ИИ скрытую команду-инструкцию на отыгрыш родов в текущем посте!
     updatePromptInjection(true); 
     
     saveSettingsDebounced();
@@ -381,19 +373,17 @@ function updatePromptInjection(isImmediateBirth = false) {
     
     let prompt = `\n[OOC: SYSTEM NOTE — {{user}} Physiological Status]\n`;
     
-    // СЮЖЕТНЫЙ ТРИГГЕР РОДОВ (FORCE EXECUTION)
     if (isImmediateBirth) {
         const lastChildren = data.childrenList.slice(-data.childrenList.length);
         prompt += `🚨 CRITICAL STORY EVENT: {{user}} is GIVING BIRTH right now in this exact scene!
-Directive for {{char}}: Describe the intense process of delivery and labor. No medical ultrasound or modern tech exists. 
+Directive for {{char}}: Describe the intense process of delivery and labor. 
 The outcome is already physically fixed by system data: {{user}} successfully delivers exactly ${lastChildren.length} baby(ies).
-Baby details to describe: ${lastChildren.map((c, i) => `Child #${i+1}: ${c.gender}, Eyes: ${c.eyes}, Hair: ${c.hair}`).join('; ')}.
+Baby details to describe: ${lastChildren.map((c, i) => `Child #${i+1}: ${c.gender}, Eyes: ${c.eyes} color, Hair: ${c.hair} color`).join('; ')}.
 Acknowledge the baby's exact physical features in your response.\n`;
         setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
         return;
     }
 
-    // ПОСЛЕРОДОВОЙ ПЕРИОД (40 ДНЕЙ КОРМЛЕНИЯ / ГНЕЗДОВАНИЯ)
     if (data.postpartumDays > 0) {
         const pData = getPostpartumData(data.postpartumDays);
         prompt += `Status: POSTPARTUM RECOVERY (Day ${data.postpartumDays}/40) | Phase: ${pData.name}\n`;
@@ -407,7 +397,6 @@ Acknowledge the baby's exact physical features in your response.\n`;
         return;
     }
 
-    // СТАНДАРТНАЯ БЕРЕМЕННОСТЬ ИЛИ ЦИКЛ
     if (data.isPregnant) {
         prompt += `Status: PREGNANT | Duration: ${data.pregnancyWeeks} weeks.\n`;
         const fetus = getFetusData(data.pregnancyWeeks);
@@ -459,7 +448,6 @@ function renderUI() {
         </div>`;
     }
 
-    // Интерфейс послеродовой фазы (Отображение лохий и лактации)
     let postpartumHtml = '';
     if (data.postpartumDays > 0) {
         const pData = getPostpartumData(data.postpartumDays);
@@ -478,12 +466,11 @@ function renderUI() {
         </div>`;
     }
 
-    // Отображение рожденных детей в семье
     let familyHtml = '';
     if (data.childrenList?.length > 0) {
         familyHtml = `<div style="margin: 10px 0; padding: 10px; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 6px; text-align: left; font-size: 0.85em;">
-            <strong style="color: #f472b6; display: block; margin-bottom: 4px;">${getText('newbornTitle')}</strong>
-            ${data.childrenList.map((c, i) => `<div>👶 Ребенок ${i+1}: <b>${c.gender}</b> (Глаза: ${c.eyes}, Волосы: ${c.hair})</div>`).join('')}
+            <strong style="color: #f472b6; display: block; margin-bottom: 6px;">${getText('newbornTitle')}</strong>
+            ${data.childrenList.map((c, i) => `<div style="margin-bottom: 4px;">👶 Ребенок ${i+1}: <b>${c.gender}</b> (Глаза: <span style="color: #38bdf8;">${c.eyes}</span>, Волосы: <span style="color: #fbbf24;">${c.hair}</span>)</div>`).join('')}
         </div>`;
     }
 
@@ -548,7 +535,6 @@ function renderUI() {
                 <div style="font-size: 0.85em; color: #64748b; margin-top: 6px;">📅 ${getText('sync')} ${displayDate}</div>
             </div>
 
-            <!-- СЮЖЕТНАЯ КНОПКА РОДОВ ДЛЯ БЕРЕМЕННЫХ -->
             ${data.isPregnant ? `
                 <button id="repro-btn-birth-trigger" class="menu_button" style="width: 100%; background: #10b981; color: white; font-weight: 700; margin-bottom: 10px; padding: 8px 0; justify-content: center;">${getText('giveBirthBtn')}</button>
             ` : ''}
@@ -608,11 +594,8 @@ function renderUI() {
     }
     container.html(html);
 
-    // Триггер родов
     $('#repro-btn-birth-trigger').off('click').on('click', function() {
-        if (confirm("Вы хотите запустить событие родов прямо сейчас в чате?")) {
-            processBirthTrigger();
-        }
+        if (confirm("Вы хотите запустить событие родов прямо сейчас в чате?")) { processBirthTrigger(); }
     });
 
     $('#repro-cure-complication').off('click').on('click', function() {
