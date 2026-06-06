@@ -17,7 +17,10 @@ const DEFAULT_SETTINGS = {
     aiAwareness: 'dynamic', 
     cycleLength: 28,
     periodDuration: 5,
-    chatPregnancyData: {}  
+    chatPregnancyData: {},
+    
+    // Глобальный сквозной счетчик роллов (вне конкретных чатов)
+    globalRollsCount: 0 
 };
 
 function createDefaultBodyData() {
@@ -34,8 +37,6 @@ function createDefaultBodyData() {
         activeComplication: null,
         postpartumDays: 0,
         childrenList: [],
-        
-        // По умолчанию в каждом новом чате защита отключена
         contraception: 'none' 
     };
 }
@@ -78,10 +79,11 @@ const TRANSLATIONS = {
         complicationTitle: '⚠️ Медицинское осложнение:', cureBtn: '💊 Провести лечение / Облегчить симптом',
         postpartumPhase: 'Восстановление после родов 🩹', newbornTitle: '🍼 Рожденные дети в семье:',
         giveBirthBtn: '🔔 ПРИНЯТЬ РОДЫ (Сюжетный триггер)',
-        
-        // Новые строки локализации контрацепции
         protectionLabel: 'Контрацепция:', protectionNone: 'Без защиты', protectionCondom: 'Презерватив (Барьерный)',
-        protectionPills: 'Оральные контрацептивы (КОК)', protectionIud: 'Внутриматочная спираль (ВМС)'
+        protectionPills: 'Оральные контрацептивы (КОК)', protectionIud: 'Внутриматочная спираль (ВМС)',
+        
+        // Специфический перевод для счетчика
+        globalRollsLabel: 'Всего скрытых проверок на зачатие:'
     },
     en: {
         title: '🧬 Reproductive System V2',
@@ -109,9 +111,10 @@ const TRANSLATIONS = {
         complicationTitle: '⚠️ Medical Complication:', cureBtn: '💊 Treat / Alleviate Complication',
         postpartumPhase: 'Postpartum Recovery 🩹', newbornTitle: '🍼 Children in Family:',
         giveBirthBtn: '🔔 GIVE BIRTH (Story Trigger)',
-        
         protectionLabel: 'Contraception:', protectionNone: 'No Protection', protectionCondom: 'Condom (Barrier)',
-        protectionPills: 'Oral Contraceptives (Pills)', protectionIud: 'Intrauterine Device (IUD)'
+        protectionPills: 'Oral Contraceptives (Pills)', protectionIud: 'Intrauterine Device (IUD)',
+        
+        globalRollsLabel: 'Total hidden conception checks:'
     }
 };
 
@@ -149,6 +152,9 @@ function loadSettings() {
     }
     settings = extension_settings[EXTENSION_NAME];
     
+    // Гарантируем, что переменная счетчика существует в старых сохранениях настроек
+    if (settings.globalRollsCount === undefined) settings.globalRollsCount = 0;
+
     const data = getChatBodyData();
     updateSymptomsData(data);
     checkPregnancyComplications(data);
@@ -309,9 +315,6 @@ function advanceBodyTime(days) {
     }
 }
 
-/**
- * Расчет шансов с учетом контрацепции и фазы цикла
- */
 function checkConceptionTrigger(text) {
     const data = getChatBodyData();
     if (data.isPregnant || data.postpartumDays > 0) return;
@@ -333,25 +336,31 @@ function checkConceptionTrigger(text) {
     }
 
     if (canConceive) {
-        let finalChance = 0;
+        // Увеличиваем сквозной счетчик роллов расширения
+        settings.globalRollsCount++;
 
-        // Расчет шансов в зависимости от выбранного метода защиты
+        let finalChance = 0;
         if (data.contraception === 'none') {
-            if (isFertile) {
-                finalChance = settings.mode === 'omegaverse' ? 85 : 25; // Пик
-            } else {
-                finalChance = settings.mode === 'omegaverse' ? 5 : 0.5; // "Безопасные" дни
-            }
+            finalChance = isFertile ? (settings.mode === 'omegaverse' ? 85 : 25) : (settings.mode === 'omegaverse' ? 5 : 0.5);
         } else if (data.contraception === 'condom') {
-            finalChance = 2; // Шанс, что порвется (Индекс Перля)
+            finalChance = 2;
         } else if (data.contraception === 'pills') {
-            finalChance = 0.1; // Гормональный блок таблеток
+            finalChance = 0.1;
         } else if (data.contraception === 'iud') {
-            finalChance = 0.2; // Эффективность спирали
+            finalChance = 0.2;
         }
 
-        if (Math.random() * 100 <= finalChance) {
+        const rollResult = Math.random() * 100;
+        const isSuccessful = rollResult <= finalChance;
+
+        // Отправка системного тоста-уведомления пользователю Таверны с результатом ролла
+        if (isSuccessful) {
+            toastr.success(`🎲 Кубик на зачатие брошен! Результат: ${rollResult.toFixed(1)}% из ${finalChance}% необходимых. ЗАЧАТИЕ ПРОИЗОШЛО!`);
             triggerPregnancy(data);
+        } else {
+            toastr.info(`🎲 Кубик на зачатие брошен! Результат: ${rollResult.toFixed(1)}% (требовалось меньше или равно ${finalChance}%). Мимо.`);
+            saveSettingsDebounced();
+            renderUI();
         }
     }
 }
@@ -395,7 +404,6 @@ function processBirthTrigger() {
     data.postpartumDays = 1; 
 
     updatePromptInjection(true); 
-    
     saveSettingsDebounced();
     renderUI();
     toastr.success("Сюжетное событие: Роды начались!");
@@ -430,12 +438,9 @@ function updatePromptInjection(isImmediateBirth = false) {
         prompt += `Fetus Size: ${fetus.size} | Maternal Body: ${fetus.belly}. ${fetus.desc}\n`;
     } else {
         prompt += `Current Cycle Day: ${data.cycleDay}/${settings.cycleLength} | Phase: ${phase}\n`;
-        
-        // Инжектируем в ИИ метод контрацепции персонажа игрока, чтобы он мог это обыграть (например, покупку презервативов или прием таблеток)
         if (data.contraception !== 'none') {
-            prompt += `Active Birth Control Method: ${data.contraception.toUpperCase()}. Note: Protection is actively used by {{user}} in this RP setting.\n`;
+            prompt += `Active Birth Control Method: ${data.contraception.toUpperCase()}.\n`;
         }
-
         if (data.currentSymptoms?.length > 0) prompt += `Current Physical Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
     }
 
@@ -527,7 +532,6 @@ function renderUI() {
                 </select>
             </div>
 
-            <!-- ВСТАВКА ВЫПАДАЮЩЕГО СПИСКА КОНТРАЦЕПЦИИ (БЛОКИРУЕТСЯ ПРИ БЕРЕМЕННОСТИ / ПОСЛЕ РОДОВ) -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <label style="font-size: 0.9em; opacity: 0.85;">${getText('protectionLabel')}</label>
                 <select id="repro-contraception" ${data.isPregnant || data.postpartumDays > 0 ? 'disabled' : ''} style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none; opacity: ${data.isPregnant || data.postpartumDays > 0 ? '0.5' : '1'};">
@@ -615,6 +619,11 @@ function renderUI() {
             ` : ''}
 
             <button id="repro-reset" class="menu_button type_danger" style="width: 100%; margin-top: 10px; font-weight: 600;">${getText('resetAllBtn')}</button>
+            
+            <!-- ВСТАВКА СКВОЗНОГО СЕРОГО СЧЕТЧИКА РОЛЛОВ (НЕ СБРАСЫВАЕТСЯ И ИГНОРИРУЕТ ПЕРЕКЛЮЧЕНИЯ ЧАТОВ) -->
+            <div style="margin-top: 14px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.78em; color: #64748b; text-align: center; font-style: italic; user-select: none;">
+                ${getText('globalRollsLabel')} <span id="repro-global-rolls-count" style="font-weight: bold; font-family: monospace; color: #94a3b8; margin-left: 2px;">${settings.globalRollsCount}</span>
+            </div>
         </div>
     `;
 
@@ -625,7 +634,6 @@ function renderUI() {
     }
     container.html(html);
 
-    // Слушатель изменения выпадающего списка контрацепции
     $('#repro-contraception').off('change').on('change', function() {
         data.contraception = $(this).val();
         saveSettingsDebounced();
@@ -650,6 +658,7 @@ function renderUI() {
         else { arrow.removeClass('fa-chevron-down').addClass('fa-chevron-up'); $('.repro-custom-btn-toggle').css('border-radius', '10px 10px 0 0'); }
     });
 
+    // Изменение селектов
     $('#repro-mode').on('change', function() { settings.mode = $(this).val(); getChatBodyData().currentSymptoms = []; saveSettingsDebounced(); renderUI(); updatePromptInjection(); });
     $('#repro-gender').on('change', function() { settings.gender = $(this).val(); saveSettingsDebounced(); renderUI(); updatePromptInjection(); });
     $('#repro-awareness').on('change', function() { settings.aiAwareness = $(this).val(); saveSettingsDebounced(); renderUI(); updatePromptInjection(); });
@@ -696,10 +705,7 @@ function renderUI() {
         if (confirm("Вы уверены, что хотите полностью очистить данные этого чата?")) {
             const chatId = getCurrentChatId();
             settings.chatPregnancyData[chatId] = createDefaultBodyData();
-            saveSettingsDebounced(); 
-            renderUI(); 
-            updatePromptInjection(); 
-            toastr.warning(getText('toastResetAll'));
+            saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.warning(getText('toastResetAll'));
         }
     });
 }
