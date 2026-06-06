@@ -1,50 +1,12 @@
-.repro-tracker-v2 {
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px; /* Идеальное нативное скругление */
-    padding: 0 !important; /* КРИТИЧЕСКИ: убираем внешние отступы */
-    margin-bottom: 8px;
-    color: #e2e8f0;
-    font-family: inherit;
-    overflow: hidden; /* Прячет внутренности строго по контуру углов */
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-}
-
-.repro-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    user-select: none;
-    font-size: 14px;
-    font-weight: 600;
-    color: #f472b6; /* Твой красивый розовый акцент */
-    padding: 11px 14px; /* Точные пропорции нативных кнопок Таверны */
-    background: rgba(25, 25, 35, 0.3);
-    transition: background 0.15s ease-in-out;
-}
-
-.repro-header:hover {
-    background: rgba(25, 25, 35, 0.55);
-}
-
-.repro-arrow {
-    font-size: 0.85em;
-    color: #64748b;
-    margin-right: 4px;
-}
-
-/* Все отступы живут здесь и полностью исчезают при скрытии */
-#repro-content-wrapper {
-    padding: 14px;
-    background: rgba(15, 23, 42, 0.2);
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
+/* Убираем лишние рамки и отступы, давая нативным стилям ST полностью управлять блоком */
+#repro-system-extension-container.inline-drawer {
+    margin-bottom: 0px !important;
 }
 
 .repro-sub-header {
     font-size: 0.85em;
     font-weight: 700;
-    color: #38bdf8;
+    color: var(--text_accent, #38bdf8);
     margin: 12px 0 8px 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -59,19 +21,18 @@
 
 .repro-row label {
     font-size: 0.9em;
-    color: #94a3b8;
+    color: var(--neutralTextColor, #94a3b8);
 }
 
 .repro-dropdown, .repro-input {
-    background: #0f172a;
-    border: 1px solid #334155;
-    color: #f8fafc;
+    background: var(--input-bg, #0f172a);
+    border: 1px solid var(--input-border, #334155);
+    color: var(--text-color, #f8fafc);
     padding: 6px 10px;
     border-radius: 6px;
     width: 55%;
     outline: none;
     font-family: inherit;
-    transition: border-color 0.2s;
 }
 
 .repro-dropdown:focus, .repro-input:focus {
@@ -79,7 +40,7 @@
 }
 
 .repro-card-status {
-    background: rgba(15, 23, 42, 0.4);
+    background: rgba(0, 0, 0, 0.2);
     border-left: 3px solid #f472b6;
     border-radius: 4px;
     padding: 10px;
@@ -98,7 +59,7 @@
 
 .repro-sync-date {
     font-size: 0.8em;
-    color: #475569;
+    color: #64748b;
     margin-top: 6px;
 }
 
@@ -110,7 +71,7 @@
     margin: 14px 0 10px 0;
 }
 
-/* Кнопки */
+/* Кнопки стилизованы аккуратно внутри раскрытого меню */
 .repro-btn-primary, .repro-btn-pink, .repro-btn-warning, .repro-btn-danger {
     color: #ffffff;
     border: none;
@@ -121,17 +82,14 @@
     font-size: 0.9em;
     cursor: pointer;
     margin-top: 10px;
-    transition: background 0.15s;
+    transition: filter 0.15s;
+}
+
+.repro-btn-primary:hover, .repro-btn-pink:hover, .repro-btn-warning:hover, .repro-btn-danger:hover {
+    filter: brightness(1.2);
 }
 
 .repro-btn-primary { background: #0284c7; }
-.repro-btn-primary:hover { background: #0369a1; }
-
 .repro-btn-pink { background: #db2777; }
-.repro-btn-pink:hover { background: #be185d; }
-
 .repro-btn-warning { background: #b45309; }
-.repro-btn-warning:hover { background: #92400e; }
-
 .repro-btn-danger { background: #dc2626; }
-.repro-btn-danger:hover { background: #b91c1c; }
