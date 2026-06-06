@@ -1,4 +1,4 @@
-// База данных симптомов, развития плода и осложнений беременности
+// База данных симптомов цикла
 export const SYMPTOMS = {
     menstruation: [
         "Тянущая боль внизу живота",
@@ -20,7 +20,7 @@ export const SYMPTOMS = {
     ]
 };
 
-// Параметры плода и физиологии по неделям
+// Развитие плода по неделям
 export const PREGNANCY_STAGES = {
     1: { size: "Размер клетки", weight: "Менее 0.1 г", belly: "Живот незаметен", desc: "Происходит оплодотворение и деление клеток. Тело готовится к имплантации." },
     4: { size: "Маковое зёрнышко", weight: "Менее 1 г", belly: "Живот незаметен", desc: "Эмбрион закрепился в матке. Возможен легкий ранний токсикоз, чувствительность к запахам." },
@@ -30,12 +30,19 @@ export const PREGNANCY_STAGES = {
     20: { size: "Большой банан", weight: "Около 300 г", belly: "Округлый, отчетливый живот", desc: "Экватор. Плод отчетливо пихается. Кожа растягивается, матка на уровне пупка." },
     24: { size: "Початок кукурузы", weight: "Около 600 г", belly: "Выпирающий, округлый живот", desc: "Плод слышит звуки. Появляется тяжесть в пояснице, легкая одышка при быстрой ходьбе." },
     28: { size: "Крупный баклажан", weight: "Около 1100 г", belly: "Большой, высоко поднятый живот", desc: "Начало 3-го триместра. Толчки сильные, видны снаружи. Труднее спать на спине." },
-    32: { size: "Тыква", weight: "Около 1700 г", belly: "Очень большой, стесняет движения", desc: "Организму тяжело. Появляются тренировочные схватки Брэкстона-Хикса, изжога." },
+    32: { size: "Тыква сквош", weight: "Около 1700 г", belly: "Очень большой, стесняет движения", desc: "Организму тяжело. Появляются тренировочные схватки Брэкстона-Хикса, изжога." },
     36: { size: "Крупный кочан капусты", weight: "Около 2500 г", belly: "Огромный, давит на ребра", desc: "Живот постепенно начинает опускаться вниз. Ребенок занимает финальное положение головой вниз." },
     40: { size: "Большой арбуз", weight: "Около 3400 г", belly: "Максимальный размер, опущен вниз", desc: "Срок родов. Матка сильно давит на мочевой пузырь, ходить и дышать тяжело. Готовность к схваткам." }
 };
 
-// Пул возможных осложнений по триместрам
+// Физиология послеродового периода (Лохии / Лактация / Гнездование)
+export const POSTPARTUM_STAGES = {
+    7: { name: "Раннее восстановление", desc: "Организм истощен после родов. Наблюдаются обильные выделения (лохии), слабость. На 3-5 день приходит грудное молоко, грудь наливается и становится очень чувствительной." },
+    20: { name: "Активное заживление", desc: "Матка интенсивно сокращается (особенно при кормлении ребенка). Выделения становятся умеренными. Проявляется сильный инстинкт гнездования и недосып." },
+    40: { name: "Завершение восстановления", desc: "Финал послеродового периода. Выделения практически прекратились, лактация полностью стабилизировалась, гормональный фон готовится к возврату менструального цикла." }
+};
+
+// Осложнения беременности
 export const COMPLICATIONS_POOL = {
     1: [
         { id: "toxicosis_severe", name: "Тяжелый токсикоз", curable: true, desc: "Непрекращающаяся тошнота, рвота от любой пищи, сильная слабость и истощение." },
@@ -54,9 +61,6 @@ export const COMPLICATIONS_POOL = {
     ]
 };
 
-/**
- * Возвращает данные плода на основе текущей недели
- */
 export function getFetusData(weeks) {
     const milestones = Object.keys(PREGNANCY_STAGES).map(Number).sort((a, b) => b - a);
     for (const week of milestones) {
@@ -65,9 +69,14 @@ export function getFetusData(weeks) {
     return PREGNANCY_STAGES[1];
 }
 
-/**
- * Выбирает случайное количество симптомов цикла
- */
+export function getPostpartumData(days) {
+    const milestones = Object.keys(POSTPARTUM_STAGES).map(Number).sort((a, b) => a - b);
+    for (const day of milestones) {
+        if (days <= day) return POSTPARTUM_STAGES[day];
+    }
+    return POSTPARTUM_STAGES[40];
+}
+
 export function getRandomSymptoms(phase, maxCount = 3) {
     const list = SYMPTOMS[phase];
     if (!list || list.length === 0) return [];
@@ -76,31 +85,71 @@ export function getRandomSymptoms(phase, maxCount = 3) {
     return shuffled.slice(0, count);
 }
 
-/**
- * Ролл случайного осложнения для конкретного триместра (Шанс ~20%)
- */
 export function rollComplication(trimester) {
-    const chance = Math.random() * 100;
-    if (chance > 20) return null; // 20% шанс получить осложнение в этом триместре
-    
+    if (Math.random() * 100 > 20) return null;
     const pool = COMPLICATIONS_POOL[trimester];
     if (!pool || pool.length === 0) return null;
+    const selected = pool[Math.floor(Math.random() * pool.length)];
     
-    const randomIndex = Math.floor(Math.random() * pool.length);
-    const selected = pool[randomIndex];
-    
-    // Генерируем случайную неделю внутри этого триместра, когда оно себя проявит
     let startWeek = 4;
-    if (trimester === 1) startWeek = Math.floor(Math.random() * 9) + 4; // 4-12 недели
-    else if (trimester === 2) startWeek = Math.floor(Math.random() * 14) + 13; // 13-26 недели
-    else if (trimester === 3) startWeek = Math.floor(Math.random() * 13) + 27; // 27-39 недели
+    if (trimester === 1) startWeek = Math.floor(Math.random() * 9) + 4;
+    else if (trimester === 2) startWeek = Math.floor(Math.random() * 14) + 13;
+    else if (trimester === 3) startWeek = Math.floor(Math.random() * 13) + 27;
+
+    return { id: selected.id, name: selected.name, desc: selected.desc, curable: selected.curable, triggerWeek: startWeek, isDiscovered: false };
+}
+
+/**
+ * Ищет упоминания цвета глаз и волос в строке текста карточки
+ */
+function parseFeature(text, type) {
+    if (!text) return null;
+    const lower = text.toLowerCase();
+    
+    const keywords = {
+        eyes: ["глаза", "глаз", "взгляд", "eyes", "eye"],
+        hair: ["волосы", "волос", "прическа", "шевелюра", "hair"]
+    };
+
+    const colors = ["голубые", "карие", "зеленые", "серые", "черные", "светлые", "рыжие", "русые", "темные", "blue", "brown", "green", "grey", "black", "blond", "red"];
+    
+    const words = lower.split(/[\s,.:;()]+/);
+    for (let i = 0; i < words.length; i++) {
+        if (keywords[type].some(k => words[i].includes(k))) {
+            // Ищем подходящее слово по цвету в радиусе 3 слов вокруг ключевого
+            for (let j = Math.max(0, i - 3); j <= Math.min(words.length - 1, i + 3); j++) {
+                if (colors.includes(words[j])) return words[j];
+            }
+        }
+    }
+    return null;
+}
+
+/**
+ * Генерирует черты ребенка, выуживая генетику из контекста Таверны
+ */
+export function generateChildGenetics() {
+    let motherEyes = "карие", motherHair = "темные";
+    let fatherEyes = "голубые", fatherHair = "светлые";
+
+    if (typeof SillyTavern?.getContext === 'function') {
+        const ctx = SillyTavern.getContext();
+        const char = ctx.characters?.[ctx.character_id];
+        
+        // Будем считать, что {{char}} — это отец, а профайл игрока — мать (или наоборот, система разберется при наследовании)
+        if (char) {
+            const charText = `${char.description || ''} ${char.personality || ''}`;
+            fatherEyes = parseFeature(charText, "eyes") || fatherEyes;
+            fatherHair = parseFeature(charText, "hair") || fatherHair;
+        }
+    }
+
+    // Рандомное Менделевское наследование признаков (50/50)
+    const babyEyes = Math.random() > 0.5 ? motherEyes : fatherEyes;
+    const babyHair = Math.random() > 0.5 ? motherHair : fatherHair;
 
     return {
-        id: selected.id,
-        name: selected.name,
-        desc: selected.desc,
-        curable: selected.curable,
-        triggerWeek: startWeek,
-        isDiscovered: false
+        eyes: babyEyes,
+        hair: babyHair
     };
 }
