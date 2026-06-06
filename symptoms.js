@@ -28,14 +28,14 @@ export const PREGNANCY_STAGES = {
     12: { size: "Крупная слива", weight: "Около 15 г", belly: "Едва уловимая округлость", desc: "Конец 1-го триместра. Органы сформированы, плод начинает шевелиться, но это еще не чувствуется." },
     16: { size: "Крупный авокадо", weight: "Около 100 г", belly: "Заметный небольшой бугорок", desc: "Активный рост. У повторнородящих возможны первые нежные шевеления («бабочки в животе»)." },
     20: { size: "Большой банан", weight: "Около 300 г", belly: "Округлый, отчетливый живот", desc: "Экватор. Плод отчетливо пихается. Кожа растягивается, матка на уровне пупка." },
-    24: { size: "Початок кукурузы", weight: "Около 600 г", belly: "Выпирающий, округлый живот", desc: "Плод слышит звуки. Появляется тяжесть в пояснице, легкая одышка при быстрой ходьбе." },
+    24: { size: "Початок кукурузы", weight: "Около 600 г", belly: "Выпирающий, округлый живот", desc: "Плод слы слышит звуки. Появляется тяжесть в пояснице, легкая одышка при быстрой ходьбе." },
     28: { size: "Крупный баклажан", weight: "Около 1100 г", belly: "Большой, высоко поднятый живот", desc: "Начало 3-го триместра. Толчки сильные, видны снаружи. Труднее спать на спине." },
     32: { size: "Тыква сквош", weight: "Около 1700 г", belly: "Очень большой, стесняет движения", desc: "Организму тяжело. Появляются тренировочные схватки Брэкстона-Хикса, изжога." },
     36: { size: "Крупный кочан капусты", weight: "Около 2500 г", belly: "Огромный, давит на ребра", desc: "Живот постепенно начинает опускаться вниз. Ребенок занимает финальное положение головой вниз." },
     40: { size: "Большой арбуз", weight: "Около 3400 г", belly: "Максимальный размер, опущен вниз", desc: "Срок родов. Матка сильно давит на мочевой пузырь, ходить и дышать тяжело. Готовность к схваткам." }
 };
 
-// Физиология послеродового периода (Лохии / Лактация / Гнездование)
+// Физиология послеродового периода
 export const POSTPARTUM_STAGES = {
     7: { name: "Раннее восстановление", desc: "Организм истощен после родов. Наблюдаются обильные выделения (лохии), слабость. На 3-5 день приходит грудное молоко, грудь наливается и становится очень чувствительной." },
     20: { name: "Активное заживление", desc: "Матка интенсивно сокращается (особенно при кормлении ребенка). Выделения становятся умеренными. Проявляется сильный инстинкт гнездования и недосып." },
@@ -99,52 +99,54 @@ export function rollComplication(trimester) {
     return { id: selected.id, name: selected.name, desc: selected.desc, curable: selected.curable, triggerWeek: startWeek, isDiscovered: false };
 }
 
-/**
- * Ищет упоминания цвета глаз и волос в строке текста карточки
- */
 function parseFeature(text, type) {
     if (!text) return null;
     const lower = text.toLowerCase();
     
     const keywords = {
-        eyes: ["глаза", "глаз", "взгляд", "eyes", "eye"],
-        hair: ["волосы", "волос", "прическа", "шевелюра", "hair"]
+        eyes: ["глаза", "глаз", "взгляд", "eyes", "eye", "eyecolor"],
+        hair: ["волосы", "волос", "прическа", "шевелюра", "hair", "haircolor"]
     };
 
-    const colors = ["голубые", "карие", "зеленые", "серые", "черные", "светлые", "рыжие", "русые", "темные", "blue", "brown", "green", "grey", "black", "blond", "red"];
+    // Красивые словесные описания для вывода в интерфейс
+    const colors = {
+        "голубые": "голубые", "карие": "карие", "зеленые": "зеленые", "серые": "серые", "черные": "угольно-черные", 
+        "светлые": "светлые", "рыжие": "огненно-рыжие", "русые": "русые", "темные": "темные", "белые": "белокурые",
+        "blue": "голубые", "brown": "карие", "green": "зеленые", "grey": "серые", "black": "черные", "blond": "светлые", "red": "рыжие"
+    };
     
     const words = lower.split(/[\s,.:;()]+/);
     for (let i = 0; i < words.length; i++) {
         if (keywords[type].some(k => words[i].includes(k))) {
-            // Ищем подходящее слово по цвету в радиусе 3 слов вокруг ключевого
-            for (let j = Math.max(0, i - 3); j <= Math.min(words.length - 1, i + 3); j++) {
-                if (colors.includes(words[j])) return words[j];
+            for (let j = Math.max(0, i - 4); j <= Math.min(words.length - 1, i + 4); j++) {
+                const cleanWord = words[j].replace(/[^a-zа-яё]/g, '');
+                if (colors[cleanWord]) return colors[cleanWord];
             }
         }
     }
     return null;
 }
 
-/**
- * Генерирует черты ребенка, выуживая генетику из контекста Таверны
- */
 export function generateChildGenetics() {
-    let motherEyes = "карие", motherHair = "темные";
+    // Реальные дефолтные цвета на случай, если карточка пустая или не распарсилась
+    const defaultMotherEyes = ["карие", "зеленые", "серые"][Math.floor(Math.random() * 3)];
+    const defaultMotherHair = ["темно-русые", "каштановые", "русые"][Math.floor(Math.random() * 3)];
+    
+    let motherEyes = defaultMotherEyes, motherHair = defaultMotherHair;
     let fatherEyes = "голубые", fatherHair = "светлые";
 
     if (typeof SillyTavern?.getContext === 'function') {
         const ctx = SillyTavern.getContext();
         const char = ctx.characters?.[ctx.character_id];
         
-        // Будем считать, что {{char}} — это отец, а профайл игрока — мать (или наоборот, система разберется при наследовании)
         if (char) {
             const charText = `${char.description || ''} ${char.personality || ''}`;
-            fatherEyes = parseFeature(charText, "eyes") || fatherEyes;
-            fatherHair = parseFeature(charText, "hair") || fatherHair;
+            fatherEyes = parseFeature(charText, "eyes") || "темно-карие";
+            fatherHair = parseFeature(charText, "hair") || "темные";
         }
     }
 
-    // Рандомное Менделевское наследование признаков (50/50)
+    // Наследование
     const babyEyes = Math.random() > 0.5 ? motherEyes : fatherEyes;
     const babyHair = Math.random() > 0.5 ? motherHair : fatherHair;
 
