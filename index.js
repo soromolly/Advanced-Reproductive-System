@@ -30,7 +30,7 @@ const DEFAULT_BODY_DATA = {
 };
 
 let settings = Object.assign({}, DEFAULT_SETTINGS);
-let isMenuCollapsed = true; // По умолчанию всегда закрыто
+let isMenuCollapsed = true; 
 
 const MONTHS_RU = {
     'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3, 'мая': 4, 'июня': 5,
@@ -76,18 +76,35 @@ function getBodyPhase() {
     }
 }
 
+// УНИВЕРСАЛЬНЫЙ ГИБРИДНЫЙ ПАРСЕР ДАТ
 function parseRpDateFromText(text) {
     if (!text) return null;
-    const regex = /(\d{1,2})\s+([а-яёА-ЯЁ]+)\s+(\d{4})\s+года/i;
-    const match = text.match(regex);
+
+    // Вариант 1: Текстовый формат месяца капсом ("14 ИЮЛЯ 2026 ГОДА")
+    const textRegex = /(\d{1,2})\s+([а-яёА-ЯЁ]+)\s+(\d{4})/i;
+    const textMatch = text.match(textRegex);
     
-    if (match) {
-        const day = parseInt(match[1]);
-        const monthStr = match[2].toLowerCase();
-        const year = parseInt(match[3]);
+    if (textMatch) {
+        const day = parseInt(textMatch[1]);
+        const monthStr = textMatch[2].toLowerCase();
+        const year = parseInt(textMatch[3]);
         
         if (MONTHS_RU[monthStr] !== undefined && day >= 1 && day <= 31) {
             return new Date(year, MONTHS_RU[monthStr], day);
+        }
+    }
+
+    // Вариант 2: Цифровой формат через точки или слэши ("06.06.2026")
+    const numRegex = /(\d{1,2})[\.\/](\d{1,2})[\.\/](\d{4})/;
+    const numMatch = text.match(numRegex);
+
+    if (numMatch) {
+        const day = parseInt(numMatch[1]);
+        const month = parseInt(numMatch[2]) - 1; // В JS нумерация месяцев с 0 до 11
+        const year = parseInt(numMatch[3]);
+
+        if (month >= 0 && month <= 11 && day >= 1 && day <= 31) {
+            return new Date(year, month, day);
         }
     }
     return null;
@@ -248,9 +265,15 @@ function renderUI() {
     const isRealism = settings.mode === 'realism';
     const statusLabel = isRealism ? 'Текущая фаза:' : 'Текущее состояние омеги:';
 
-    // Изолированная разметка без использования глобальных классов ST во избежание перехвата кликов
+    // Форматируем вывод сохраненного ISO-штампа даты в красивый вид для карточки плагина
+    let displayDate = 'Ожидание даты';
+    if (data.lastRpDate) {
+        const parts = data.lastRpDate.split('-');
+        displayDate = `${parts[2]}.${parts[1]}.${parts[0]}`;
+    }
+
     const html = `
-        <div class="repro-custom-btn-toggle" style="display: flex; justify-content: space-between; align-items: center; background: var(--input-bg, #1e1e2a); border: 1px solid var(--input-border, #334155); padding: 10px 14px; border-radius: 10px; cursor: pointer; user-select: none; font-size: 14px; transition: background 0.15s;">
+        <div class="repro-custom-btn-toggle" style="display: flex; justify-content: space-between; align-items: center; background: var(--input-bg, #1e1e2a); border: 1px solid var(--input-border, #334155); padding: 10px 14px; border-radius: ${isMenuCollapsed ? '10px' : '10px 10px 0 0'}; cursor: pointer; user-select: none; font-size: 14px; transition: background 0.15s;">
             <span style="color: #f472b6 !important; font-weight: 600;">🧬 Система Репродукции V2</span>
             <i id="repro-toggle-arrow" class="fa-solid ${isMenuCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'}" style="opacity: 0.6; font-size: 12px; margin-right: 4px;"></i>
         </div>
@@ -294,7 +317,7 @@ function renderUI() {
                 ` : `
                     <div style="margin-bottom: 4px;"><strong>Текущий день:</strong> ${data.cycleDay} из ${settings.cycleLength} дней</div>
                 `}
-                <div style="font-size: 0.85em; color: #64748b; margin-top: 6px;">📅 Синхронизация: ${data.lastRpDate ? data.lastRpDate : 'Ожидание даты'}</div>
+                <div style="font-size: 0.85em; color: #64748b; margin-top: 6px;">📅 Синхронизация: ${displayDate}</div>
             </div>
 
             <div style="font-size: 0.85em; font-weight: 700; color: var(--text_accent, #38bdf8); margin: 12px 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Параметры</div>
@@ -327,7 +350,7 @@ function renderUI() {
                         <label style="font-size: 0.9em; opacity: 0.85;">Плодов:</label>
                         <input type="number" id="repro-manual-count" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="1" min="1" max="3"/>
                     </div>
-                    <button id="repro-btn-manual-preg" class="menu_button" style="width: 100%; background: #db2777; color: white; font-weight: 600;">🤰 Начать беременность</button>
+                    <button id="repro-btn-manual-preg" class="menu_button" style="width: 100%; background: #db2777; color: white; font-weight: 600;"> Начать беременность</button>
                 </div>
             ` : ''}
 
@@ -339,7 +362,6 @@ function renderUI() {
         </div>
     `;
 
-    // Оставляем контейнер свободным (auto), чтобы он плавно рос вниз строго внутри своей левой колонки
     let container = $('#repro-system-extension-container');
     if (container.length === 0) {
         container = $('<div id="repro-system-extension-container" style="grid-column: auto; margin-bottom: 10px;"></div>');
@@ -347,7 +369,6 @@ function renderUI() {
     }
     container.html(html);
 
-    // Собственный чистый клик, изолированный от внутренних систем Таверны
     $('.repro-custom-btn-toggle').off('click').on('click', function() {
         isMenuCollapsed = !isMenuCollapsed;
         $('#repro-content-wrapper').slideToggle(150);
@@ -355,15 +376,13 @@ function renderUI() {
         const arrow = $('#repro-toggle-arrow');
         if (isMenuCollapsed) {
             arrow.removeClass('fa-chevron-up').addClass('fa-chevron-down');
-            $('.repro-custom-btn-toggle').style.borderRadius = "10px";
+            $('.repro-custom-btn-toggle').css('border-radius', '10px');
         } else {
             arrow.removeClass('fa-chevron-down').addClass('fa-chevron-up');
-            // Скругляем только верх, когда меню открыто
-            document.querySelector('.repro-custom-btn-toggle').style.borderRadius = "10px 10px 0 0";
+            $('.repro-custom-btn-toggle').css('border-radius', '10px 10px 0 0');
         }
     });
 
-    // Изменение селекторов
     $('#repro-mode').on('change', function() {
         settings.mode = $(this).val();
         saveSettingsDebounced();
