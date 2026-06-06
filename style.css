@@ -1,0 +1,95 @@
+.repro-tracker-v2 {
+    background: rgba(25, 25, 35, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px;
+    color: #e2e8f0;
+    font-family: 'Segoe UI', Roboto, sans-serif;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.repro-header {
+    font-size: 1.15em;
+    font-weight: 700;
+    color: #f472b6;
+    margin-bottom: 14px;
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+
+.repro-sub-header {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: #38bdf8;
+    margin: 14px 0 8px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.repro-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.repro-row label {
+    font-size: 0.9em;
+    color: #94a3b8;
+}
+
+.repro-dropdown, .repro-input {
+    background: #0f172a;
+    border: 1px solid #334155;
+    color: #f8fafc;
+    padding: 6px 10px;
+    border-radius: 6px;
+    width: 55%;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.repro-dropdown:focus, .repro-input:focus {
+    border-color: #f472b6;
+}
+
+.repro-card-status {
+    background: rgba(15, 23, 42, 0.6);
+    border-left: 4px solid #f472b6;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 14px 0;
+}
+
+.repro-status-item {
+    font-size: 0.95em;
+    margin-bottom: 6px;
+}
+
+.badge-phase {
+    color: #4ade80;
+    font-weight: 700;
+}
+
+.repro-sync-date {
+    font-size: 0.8em;
+    color: #64748b;
+    margin-top: 4px;
+}
+
+.repro-btn-danger {
+    background: #ef4444;
+    color: #ffffff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    width: 100%;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: background 0.2s;
+}
+
+.repro-btn-danger:hover {
+    background: #dc2626;
+}
