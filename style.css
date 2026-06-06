@@ -133,3 +133,42 @@
 .repro-btn-pink:hover {
     background: #be185d;
 }
+.repro-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    font-size: 1.15em;
+    font-weight: 700;
+    color: #f472b6;
+    margin-bottom: 14px;
+    letter-spacing: 0.5px;
+}
+
+.repro-header:hover {
+    opacity: 0.85;
+}
+
+.repro-arrow {
+    font-size: 0.85em;
+    color: #94a3b8;
+    transition: color 0.2s;
+}
+
+.repro-btn-warning {
+    background: #d97706;
+    color: #ffffff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    width: 100%;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: background 0.2s;
+}
+
+.repro-btn-warning:hover {
+    background: #b45309;
+}
