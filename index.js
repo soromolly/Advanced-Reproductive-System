@@ -30,7 +30,7 @@ const DEFAULT_BODY_DATA = {
 };
 
 let settings = Object.assign({}, DEFAULT_SETTINGS);
-let isMenuCollapsed = true; // По умолчанию скрыто, чтобы экономить место на мобильных
+let isMenuCollapsed = true; // По умолчанию меню аккуратно свёрнуто
 
 const MONTHS_RU = {
     'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3, 'мая': 4, 'июня': 5,
@@ -256,59 +256,59 @@ function renderUI() {
         
         <div id="repro-content-wrapper" class="inline-drawer-content" style="${isMenuCollapsed ? 'display: none;' : 'display: block;'} padding: 14px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">Режим симуляции:</label>
+                <label style="font-size: 0.9em; opacity: 0.85;">Система:</label>
                 <select id="repro-mode" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;">
-                    <option value="realism" ${settings.mode === 'realism' ? 'selected' : ''}>Реализм (Анатомия)</option>
+                    <option value="realism" ${settings.mode === 'realism' ? 'selected' : ''}>Реализм</option>
                     <option value="omegaverse" ${settings.mode === 'omegaverse' ? 'selected' : ''}>ОмегаВерс</option>
                 </select>
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">Биология {{user}}:</label>
+                <label style="font-size: 0.9em; opacity: 0.85;">Физиология:</label>
                 <select id="repro-gender" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;">
-                    <option value="female" ${settings.gender === 'female' ? 'selected' : ''}>Женщина (Стандарт)</option>
-                    <option value="female_omega" ${settings.gender === 'female_omega' ? 'selected' : ''}>Женщина-Омега</option>
-                    <option value="male_omega" ${settings.gender === 'male_omega' ? 'selected' : ''}>Мужчина-Омега</option>
+                    <option value="female" ${settings.gender === 'female' ? 'selected' : ''}>Женщина</option>
+                    <option value="female_omega" ${settings.gender === 'female_omega' ? 'selected' : ''}>Ж-Омега</option>
+                    <option value="male_omega" ${settings.gender === 'male_omega' ? 'selected' : ''}>М-Омега</option>
                 </select>
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">Осведомлённость ИИ:</label>
+                <label style="font-size: 0.9em; opacity: 0.85;">Логика ИИ:</label>
                 <select id="repro-awareness" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;">
-                    <option value="dynamic" ${settings.aiAwareness === 'dynamic' ? 'selected' : ''}>Реалистично (УЗИ на 20 нед.)</option>
-                    <option value="hidden" ${settings.aiAwareness === 'hidden' ? 'selected' : ''}>Слепой режим (Средневековье)</option>
-                    <option value="full" ${settings.aiAwareness === 'full' ? 'selected' : ''}>ИИ знает всё сразу</option>
+                    <option value="dynamic" ${settings.aiAwareness === 'dynamic' ? 'selected' : ''}>УЗИ (20 нед)</option>
+                    <option value="hidden" ${settings.aiAwareness === 'hidden' ? 'selected' : ''}>Средневековье</option>
+                    <option value="full" ${settings.aiAwareness === 'full' ? 'selected' : ''}>Знает всё</option>
                 </select>
             </div>
 
-            <div style="background: rgba(0, 0, 0, 0.2); border-left: 3px solid #f472b6; border-radius: 4px; padding: 10px; margin: 12px 0; font-size: 0.9em;">
+            <div style="background: rgba(0, 0, 0, 0.3); border-left: 3px solid #f472b6; border-radius: 4px; padding: 10px; margin: 12px 0; font-size: 0.9em; text-align: left;">
                 <div style="margin-bottom: 4px;"><strong>${statusLabel}</strong> <span style="color: #4ade80; font-weight: 700;">${getBodyPhase()}</span></div>
                 ${data.isPregnant ? `
                     <div style="margin-bottom: 4px;"><strong>Срок в RP:</strong> ${data.pregnancyWeeks} нед. ${data.pregnancyDays} дн.</div>
                     <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #f472b6;">
-                        ℹ️ <em>Тебе видно (ИИ скрыто):</em><br>
-                        • Количество: <b>${data.babiesCount}</b><br>
+                        ℹ️ <em>Карта плода:</em><br>
+                        • Детей: <b>${data.babiesCount}</b><br>
                         • Пол: <b>${data.babiesGenders.join(', ')}</b>
                     </div>
                 ` : `
                     <div style="margin-bottom: 4px;"><strong>Текущий день:</strong> ${data.cycleDay} из ${settings.cycleLength} дней</div>
                 `}
-                <div style="font-size: 0.85em; color: #64748b; margin-top: 6px;">📅 Последняя RP дата: ${data.lastRpDate ? data.lastRpDate : 'Не синхронизировано'}</div>
+                <div style="font-size: 0.85em; color: #64748b; margin-top: 6px;">📅 Синхронизация: ${data.lastRpDate ? data.lastRpDate : 'Ожидание даты'}</div>
             </div>
 
-            <div style="font-size: 0.85em; font-weight: 700; color: var(--text_accent, #38bdf8); margin: 12px 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px;">Настройки параметров</div>
+            <div style="font-size: 0.85em; font-weight: 700; color: var(--text_accent, #38bdf8); margin: 12px 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Параметры</div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">Длина всего цикла:</label>
+                <label style="font-size: 0.9em; opacity: 0.85;">Цикл (дней):</label>
                 <input type="number" id="repro-input-cycle" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;" value="${settings.cycleLength}"/>
             </div>
             ${data.isPregnant ? `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <label style="font-size: 0.9em; opacity: 0.85;">Изменить неделю:</label>
+                    <label style="font-size: 0.9em; opacity: 0.85;">Неделя:</label>
                     <input type="number" id="repro-input-weeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;" value="${data.pregnancyWeeks}"/>
                 </div>
             ` : `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <label style="font-size: 0.9em; opacity: 0.85;">Изменить текущий день:</label>
+                    <label style="font-size: 0.9em; opacity: 0.85;">День цикла:</label>
                     <input type="number" id="repro-input-day" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;" value="${data.cycleDay}"/>
                 </div>
             `}
@@ -316,25 +316,25 @@ function renderUI() {
             <button id="repro-apply-params" class="menu_button type_primary" style="width: 100%; margin-top: 10px; font-weight: 600;">▶ Применить изменения</button>
 
             ${!data.isPregnant ? `
-                <div style="background: rgba(244, 114, 182, 0.03); border: 1px dashed rgba(244, 114, 182, 0.2); border-radius: 8px; padding: 12px; margin: 14px 0 10px 0;">
-                    <div style="font-size: 0.85em; font-weight: 700; color: #f472b6; margin-bottom: 8px; text-transform: uppercase;">Инициализировать беременность</div>
+                <div style="background: rgba(244, 114, 182, 0.03); border: 1px dashed rgba(244, 114, 182, 0.2); border-radius: 8px; padding: 12px; margin: 14px 0 10px 0; text-align: left;">
+                    <div style="font-size: 0.85em; font-weight: 700; color: #f472b6; margin-bottom: 8px; text-transform: uppercase;">Задать беременность</div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <label style="font-size: 0.9em; opacity: 0.85;">Срок (в неделях):</label>
+                        <label style="font-size: 0.9em; opacity: 0.85;">Срок (нед):</label>
                         <input type="number" id="repro-manual-weeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;" value="4" min="0" max="40"/>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <label style="font-size: 0.9em; opacity: 0.85;">Количество детей:</label>
+                        <label style="font-size: 0.9em; opacity: 0.85;">Плодов:</label>
                         <input type="number" id="repro-manual-count" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;" value="1" min="1" max="3"/>
                     </div>
-                    <button id="repro-btn-manual-preg" class="menu_button" style="width: 100%; background: #db2777; color: white; font-weight: 600;">🤰 Установить беременность</button>
+                    <button id="repro-btn-manual-preg" class="menu_button" style="width: 100%; background: #db2777; color: white; font-weight: 600;">🤰 Начать беременность</button>
                 </div>
             ` : ''}
 
             ${data.isPregnant ? `
-                <button id="repro-reset-pregnancy-only" class="menu_button type_warning" style="width: 100%; margin-top: 10px; font-weight: 600;">🚼 Сбросить только беременность</button>
+                <button id="repro-reset-pregnancy-only" class="menu_button type_warning" style="width: 100%; margin-top: 10px; font-weight: 600;">🚼 Сбросить беременность</button>
             ` : ''}
 
-            <button id="repro-reset" class="menu_button type_danger" style="width: 100%; margin-top: 10px; font-weight: 600;">Полный сброс трекера чата</button>
+            <button id="repro-reset" class="menu_button type_danger" style="width: 100%; margin-top: 10px; font-weight: 600;">Полный сброс данных</button>
         </div>
     `;
 
@@ -343,10 +343,27 @@ function renderUI() {
         container = $('<div id="repro-system-extension-container" class="inline-drawer"></div>');
         $('#extensions_settings').append(container);
     }
+    
+    // ДИНАМИЧЕСКИЙ СДВИГ СЕТКИ: если развернуто — занимаем 2 колонки, если свернуто — возвращаемся в 1 ячейку
+    if (isMenuCollapsed) {
+        container.css('grid-column', 'auto');
+    } else {
+        container.css('grid-column', 'span 2');
+    }
+    
     container.html(html);
 
+    // Логика клика
     $('.repro-header-click').off('click').on('click', function() {
         isMenuCollapsed = !isMenuCollapsed;
+        
+        // Переключаем сетку прямо в момент анимации
+        if (isMenuCollapsed) {
+            container.css('grid-column', 'auto');
+        } else {
+            container.css('grid-column', 'span 2');
+        }
+        
         $('#repro-content-wrapper').slideToggle(150);
         const arrow = $('#repro-toggle-arrow');
         if (isMenuCollapsed) {
@@ -370,6 +387,7 @@ function renderUI() {
         updatePromptInjection();
     });
 
+    // Изменение логики конфиденциальности
     $('#repro-awareness').on('change', function() {
         settings.aiAwareness = $(this).val();
         saveSettingsDebounced();
@@ -391,7 +409,7 @@ function renderUI() {
         saveSettingsDebounced();
         renderUI();
         updatePromptInjection();
-        toastr.success('Параметры репродуктивной системы успешно обновлены!');
+        toastr.success('Параметры успешно сохранены!');
     });
 
     $('#repro-btn-manual-preg').on('click', function() {
@@ -412,7 +430,7 @@ function renderUI() {
         saveSettingsDebounced();
         renderUI();
         updatePromptInjection();
-        toastr.success(`Беременность успешно задана вручную! Срок: ${weeks} недель.`);
+        toastr.success(`Беременность установлена вручную: ${weeks} нед.`);
     });
 
     $('#repro-reset-pregnancy-only').on('click', function() {
@@ -426,7 +444,7 @@ function renderUI() {
         saveSettingsDebounced();
         renderUI();
         updatePromptInjection();
-        toastr.info('Беременность сброшена. Цикл восстановлен!');
+        toastr.info('Беременность сброшена.');
     });
 
     $('#repro-reset').on('click', function() {
@@ -435,7 +453,7 @@ function renderUI() {
         saveSettingsDebounced();
         renderUI();
         updatePromptInjection();
-        toastr.info('Все физиологические данные текущего чата были очищены.');
+        toastr.info('Данные чата полностью очищены.');
     });
 }
 
