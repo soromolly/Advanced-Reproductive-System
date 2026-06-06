@@ -32,9 +32,15 @@ const DEFAULT_BODY_DATA = {
 let settings = Object.assign({}, DEFAULT_SETTINGS);
 let isMenuCollapsed = true; 
 
-const MONTHS_RU = {
+// ОБЪЕДИНЕННЫЙ МУЛЬТИЯЗЫЧНЫЙ СЛОВАРЬ МЕСЯЦЕВ (RU / EN)
+const MONTHS = {
+    // Русский лор
     'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3, 'мая': 4, 'июня': 5,
-    'июля': 6, 'августа': 7, 'сентября': 8, 'октября': 9, 'ноября': 10, 'декабря': 11
+    'июля': 6, 'августа': 7, 'сентября': 8, 'октября': 9, 'ноября': 10, 'декабря': 11,
+    // Английский лор (полный и сокращенный)
+    'january': 0, 'february': 1, 'march': 2, 'april': 3, 'may': 4, 'june': 5,
+    'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11,
+    'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'jun': 5, 'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
 };
 
 function getCurrentChatId() {
@@ -76,21 +82,35 @@ function getBodyPhase() {
     }
 }
 
-// 1. АБСОЛЮТНЫЙ ПАРСЕР ДАТ (06.06.2026)
+// УМНЫЙ МУЛЬТИЯЗЫЧНЫЙ ПАРСЕР АБСОЛЮТНЫХ ДАТ
 function parseRpDateFromText(text) {
     if (!text) return null;
 
-    const textRegex = /(\d{1,2})\s+([а-яёА-ЯЁ]+)\s+(\d{4})/i;
+    // 1. Формат: "14 ИЮЛЯ 2026" / "14 July 2026"
+    const textRegex = /(\d{1,2})\s+([a-zA-Zа-яёА-ЯЁ]+)\s+(\d{4})/i;
     const textMatch = text.match(textRegex);
     if (textMatch) {
         const day = parseInt(textMatch[1]);
         const monthStr = textMatch[2].toLowerCase();
         const year = parseInt(textMatch[3]);
-        if (MONTHS_RU[monthStr] !== undefined && day >= 1 && day <= 31) {
-            return new Date(year, MONTHS_RU[monthStr], day);
+        if (MONTHS[monthStr] !== undefined && day >= 1 && day <= 31) {
+            return new Date(year, MONTHS[monthStr], day);
         }
     }
 
+    // 2. Классический английский формат: "July 14, 2026"
+    const enTextRegex = /([a-zA-Z]+)\s+(\d{1,2}),?\s+(\d{4})/i;
+    const enTextMatch = text.match(enTextRegex);
+    if (enTextMatch) {
+        const monthStr = enTextMatch[1].toLowerCase();
+        const day = parseInt(enTextMatch[2]);
+        const year = parseInt(enTextMatch[3]);
+        if (MONTHS[monthStr] !== undefined && day >= 1 && day <= 31) {
+            return new Date(year, MONTHS[monthStr], day);
+        }
+    }
+
+    // 3. Цифровой формат: "06.06.2026" / "06/06/2026"
     const numRegex = /(\d{1,2})[\.\/](\d{1,2})[\.\/](\d{4})/;
     const numMatch = text.match(numRegex);
     if (numMatch) {
@@ -104,39 +124,55 @@ function parseRpDateFromText(text) {
     return null;
 }
 
-// 2. ОТНОСИТЕЛЬНЫЙ ПАРСЕР ТАЙМСКИПОВ ("Прошло 2 месяца")
+// МУЛЬТИЯЗЫЧНЫЙ ПАРСЕР ТАЙМСКИПОВ (RU / EN)
 function parseRelativeTimeFromText(text) {
-    const regex = /прошло\s+(\d+)\s+(дне[йяа]|недел[ьия]|месяц[аев]|ле[тв]|год[аоу]?)/i;
-    const match = text.match(regex);
-    if (!match) return null;
+    // Русский паттерн
+    const ruRegex = /прошло\s+(\d+)\s+(дне[йяа]|недел[ьия]|месяц[аев]|ле[тв]|год[аоу]?)/i;
+    const ruMatch = text.match(ruRegex);
+    
+    // Английский паттерн (Ловит: "passed 2 months", "3 weeks later", "5 days passed")
+    const enRegex = /(?:passed\s+(\d+)\s+(day|week|month|year)s?|(\d+)\s+(day|week|month|year)s?\s+(?:passed|later))/i;
+    const enMatch = text.match(enRegex);
 
-    const count = parseInt(match[1]);
-    const unit = match[2].toLowerCase();
+    let count = 0;
+    let unit = '';
+
+    if (ruMatch) {
+        count = parseInt(ruMatch[1]);
+        unit = ruMatch[2].toLowerCase();
+    } else if (enMatch) {
+        if (enMatch[1]) {
+            count = parseInt(enMatch[1]);
+            unit = enMatch[2].toLowerCase();
+        } else {
+            count = parseInt(enMatch[3]);
+            unit = enMatch[4].toLowerCase();
+        }
+    } else {
+        return null; // Ничего не найдено
+    }
+
     const data = getChatBodyData();
-
-    // Если в системе уже зафиксирована дата, считаем дельту дней абсолютно точно по календарю
     if (data.lastRpDate) {
         const baseDate = new Date(data.lastRpDate);
         const futureDate = new Date(data.lastRpDate);
 
-        if (unit.startsWith('дн')) futureDate.setDate(futureDate.getDate() + count);
-        else if (unit.startsWith('нед')) futureDate.setDate(futureDate.getDate() + (count * 7));
-        else if (unit.startsWith('мес')) futureDate.setMonth(futureDate.getMonth() + count);
-        else if (unit.startsWith('лет') || unit.startsWith('год')) futureDate.setFullYear(futureDate.getFullYear() + count);
+        if (unit.startsWith('дн') || unit.startsWith('day')) futureDate.setDate(futureDate.getDate() + count);
+        else if (unit.startsWith('нед') || unit.startsWith('week')) futureDate.setDate(futureDate.getDate() + (count * 7));
+        else if (unit.startsWith('мес') || unit.startsWith('month')) futureDate.setMonth(futureDate.getMonth() + count);
+        else if (unit.startsWith('ле') || unit.startsWith('год') || unit.startsWith('year')) futureDate.setFullYear(futureDate.getFullYear() + count);
 
         const timeDiff = futureDate - baseDate;
         const totalDays = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
         
-        // Переписываем текущую дату на новую будущую
         data.lastRpDate = futureDate.toISOString().split('T')[0];
         return totalDays;
     }
 
-    // Если базовой даты в системе не было, используем среднее математическое приближение
-    if (unit.startsWith('дн')) return count;
-    if (unit.startsWith('нед')) return count * 7;
-    if (unit.startsWith('мес')) return count * 30;
-    if (unit.startsWith('лет') || unit.startsWith('год')) return count * 365;
+    if (unit.startsWith('дн') || unit.startsWith('day')) return count;
+    if (unit.startsWith('нед') || unit.startsWith('week')) return count * 7;
+    if (unit.startsWith('мес') || unit.startsWith('month')) return count * 30;
+    if (unit.startsWith('ле') || unit.startsWith('год') || unit.startsWith('year')) return count * 365;
 
     return null;
 }
@@ -144,16 +180,14 @@ function parseRelativeTimeFromText(text) {
 function handleTimeProgression(text) {
     const data = getChatBodyData();
 
-    // А. Сначала проверяем, не написал ли пользователь относительный таймскип ("Прошло 2 месяца")
     const relativeDays = parseRelativeTimeFromText(text);
     if (relativeDays !== null && relativeDays > 0) {
         advanceBodyTime(relativeDays);
         saveSettingsDebounced();
         renderUI();
-        return; // Выходим, чтобы не конфликтовать с поиском абсолютных дат
+        return; 
     }
 
-    // Б. Если таймскипа нет, ищем классическую абсолютную дату шаблона (06.06.2026)
     const currentRpDate = parseRpDateFromText(text);
     if (!currentRpDate) return;
 
@@ -204,10 +238,11 @@ function checkConceptionTrigger(text) {
     const lowerText = text.toLowerCase();
     const phase = getBodyPhase();
     
-    const hasVaginal = /вагинально|в писю|в киску|внутрь влагалища|влагалище/i.test(lowerText);
-    const hasAnal = /анально|в анус|в попу|в задницу|прямую кишку/i.test(lowerText);
-    const hasOral = /орально|в рот|минет/i.test(lowerText);
-    const hasEjaculationInside = /кончил внутрь|излил семя внутрь|эякуляция внутрь|залил|узел|сцепка|завязал узел/i.test(lowerText);
+    // Поддержка мультиязычных логов интимных действий (RU / EN)
+    const hasVaginal = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vaginal|pussy/i.test(lowerText);
+    const hasAnal = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|butt/i.test(lowerText);
+    const hasOral = /орально|в рот|минет|oral|blowjob/i.test(lowerText);
+    const hasEjaculationInside = /кончил внутрь|излил семя внутрь|эякуляция внутрь|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied/i.test(lowerText);
 
     let isFertile = phase.includes('Овуляция') || phase.includes('Течка');
     let canConceive = false;
@@ -524,7 +559,7 @@ function renderUI() {
 jQuery(async () => {
     loadSettings();
 
-    // МГНОВЕННЫЙ ПЕРЕХВАТ ПРИ ОТПРАВКЕ ТВОЕГО СООБЩЕНИЯ
+    // ПЕРЕХВАТ ПРИ ОТПРАВКЕ СООБЩЕНИЯ (Мгновенный пре-генерационный расчёт)
     eventSource.on(event_types.MESSAGE_SENT, async (messageIndex) => {
         const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
         const chat = context ? context.chat : window.chat;
@@ -533,15 +568,12 @@ jQuery(async () => {
         const text = chat[messageIndex].mes;
         if (!text) return;
 
-        // Сканируем текст пользователя на таймскип ЕЩЁ ДО ТОГО, как запрос улетит ИИ
         handleTimeProgression(text);
         checkConceptionTrigger(text);
-        
-        // В ту же миллисекунду зашиваем обновлённый промпт
         updatePromptInjection();
     });
 
-    // ПЕРЕХВАТ ПРИ ПОЛУЧЕНИИ ОТВЕТА БОТА (на случай, если бот сам сделал таймскип)
+    // ПЕРЕХВАТ ПРИ ПОЛУЧЕНИИ ОТВЕТА БОТА
     eventSource.on(event_types.MESSAGE_RECEIVED, async (messageIndex) => {
         const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
         const chat = context ? context.chat : window.chat;
