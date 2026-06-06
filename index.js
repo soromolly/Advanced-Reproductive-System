@@ -30,7 +30,7 @@ const DEFAULT_BODY_DATA = {
 };
 
 let settings = Object.assign({}, DEFAULT_SETTINGS);
-let isMenuCollapsed = true; // По умолчанию делаем свернутым для компактности
+let isMenuCollapsed = true; // По умолчанию свернуто, как и все нативные плагины
 
 const MONTHS_RU = {
     'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3, 'мая': 4, 'июня': 5,
@@ -248,98 +248,99 @@ function renderUI() {
     const isRealism = settings.mode === 'realism';
     const statusLabel = isRealism ? 'Текущая фаза:' : 'Текущее состояние омеги:';
 
-    // Используем нативную разметку Drawer из ядра SillyTavern
+    // Используем ТОЛЬКО чистые нативные классы SillyTavern без кастомных оберток
     const html = `
         <div class="inline-drawer-toggle repro-header-click">
-            <span class="inline-drawer-title" style="color: #f472b6; font-weight: 600;">🧬 Система Репродукции V2</span>
+            <span class="inline-drawer-title" style="color: #f472b6 !important; font-weight: 600;">🧬 Система Репродукции V2</span>
             <div id="repro-toggle-arrow" class="inline-drawer-icon fa-solid ${isMenuCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'}"></div>
         </div>
         
-        <div id="repro-content-wrapper" class="inline-drawer-content" style="${isMenuCollapsed ? 'display: none;' : 'display: block;'} padding: 12px 14px;">
-            <div class="repro-row">
-                <label>Режим симуляции:</label>
-                <select id="repro-mode" class="repro-dropdown">
+        <div id="repro-content-wrapper" class="inline-drawer-content" style="${isMenuCollapsed ? 'display: none;' : 'display: block;'} padding: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <label style="font-size: 0.9em; opacity: 0.85;">Режим симуляции:</label>
+                <select id="repro-mode" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;">
                     <option value="realism" ${settings.mode === 'realism' ? 'selected' : ''}>Реализм (Анатомия)</option>
                     <option value="omegaverse" ${settings.mode === 'omegaverse' ? 'selected' : ''}>ОмегаВерс</option>
                 </select>
             </div>
 
-            <div class="repro-row">
-                <label>Биология {{user}}:</label>
-                <select id="repro-gender" class="repro-dropdown">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <label style="font-size: 0.9em; opacity: 0.85;">Биология {{user}}:</label>
+                <select id="repro-gender" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;">
                     <option value="female" ${settings.gender === 'female' ? 'selected' : ''}>Женщина (Стандарт)</option>
                     <option value="female_omega" ${settings.gender === 'female_omega' ? 'selected' : ''}>Женщина-Омега</option>
                     <option value="male_omega" ${settings.gender === 'male_omega' ? 'selected' : ''}>Мужчина-Омега</option>
                 </select>
             </div>
 
-            <div class="repro-row">
-                <label>Осведомлённость ИИ:</label>
-                <select id="repro-awareness" class="repro-dropdown">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <label style="font-size: 0.9em; opacity: 0.85;">Осведомлённость ИИ:</label>
+                <select id="repro-awareness" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;">
                     <option value="dynamic" ${settings.aiAwareness === 'dynamic' ? 'selected' : ''}>Реалистично (УЗИ на 20 нед.)</option>
                     <option value="hidden" ${settings.aiAwareness === 'hidden' ? 'selected' : ''}>Слепой режим (Средневековье)</option>
                     <option value="full" ${settings.aiAwareness === 'full' ? 'selected' : ''}>ИИ знает всё сразу</option>
                 </select>
             </div>
 
-            <div class="repro-card-status">
-                <div class="repro-status-item"><strong>${statusLabel}</strong> <span class="badge-phase">${getBodyPhase()}</span></div>
+            <div style="background: rgba(0, 0, 0, 0.2); border-left: 3px solid #f472b6; border-radius: 4px; padding: 10px; margin: 12px 0; font-size: 0.9em;">
+                <div style="margin-bottom: 4px;"><strong>${statusLabel}</strong> <span style="color: #4ade80; font-weight: 700;">${getBodyPhase()}</span></div>
                 ${data.isPregnant ? `
-                    <div class="repro-status-item"><strong>Срок в RP:</strong> ${data.pregnancyWeeks} нед. ${data.pregnancyDays} дн.</div>
-                    <div class="repro-status-item" style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #f472b6;">
+                    <div style="margin-bottom: 4px;"><strong>Срок в RP:</strong> ${data.pregnancyWeeks} нед. ${data.pregnancyDays} дн.</div>
+                    <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #f472b6;">
                         ℹ️ <em>Тебе видно (ИИ скрыто):</em><br>
                         • Количество: <b>${data.babiesCount}</b><br>
                         • Пол: <b>${data.babiesGenders.join(', ')}</b>
                     </div>
                 ` : `
-                    <div class="repro-status-item"><strong>Текущий день:</strong> ${data.cycleDay} из ${settings.cycleLength} дней</div>
+                    <div style="margin-bottom: 4px;"><strong>Текущий день:</strong> ${data.cycleDay} из ${settings.cycleLength} дней</div>
                 `}
-                <div class="repro-sync-date">📅 Последняя RP дата: ${data.lastRpDate ? data.lastRpDate : 'Не синхронизировано'}</div>
+                <div style="font-size: 0.85em; color: #64748b; margin-top: 6px;">📅 Последняя RP дата: ${data.lastRpDate ? data.lastRpDate : 'Не синхронизировано'}</div>
             </div>
 
-            <div class="repro-sub-header">Настройки параметров</div>
-            <div class="repro-row">
-                <label>Длина всего цикла:</label>
-                <input type="number" id="repro-input-cycle" class="repro-input" value="${settings.cycleLength}"/>
+            <div style="font-size: 0.85em; font-weight: 700; color: var(--text_accent, #38bdf8); margin: 12px 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px;">Настройки параметров</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <label style="font-size: 0.9em; opacity: 0.85;">Длина всего цикла:</label>
+                <input type="number" id="repro-input-cycle" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;" value="${settings.cycleLength}"/>
             </div>
             ${data.isPregnant ? `
-                <div class="repro-row">
-                    <label>Изменить неделю:</label>
-                    <input type="number" id="repro-input-weeks" class="repro-input" value="${data.pregnancyWeeks}"/>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="font-size: 0.9em; opacity: 0.85;">Изменить неделю:</label>
+                    <input type="number" id="repro-input-weeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;" value="${data.pregnancyWeeks}"/>
                 </div>
             ` : `
-                <div class="repro-row">
-                    <label>Изменить текущий день:</label>
-                    <input type="number" id="repro-input-day" class="repro-input" value="${data.cycleDay}"/>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="font-size: 0.9em; opacity: 0.85;">Изменить текущий день:</label>
+                    <input type="number" id="repro-input-day" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;" value="${data.cycleDay}"/>
                 </div>
             `}
 
-            <button id="repro-apply-params" class="repro-btn-primary">▶ Применить изменения</button>
+            <!-- ИСПОЛЬЗУЕМ НАУТИВНЫЕ КЛАССЫ КНОПОК SILLYTAVERN -->
+            <button id="repro-apply-params" class="menu_button type_primary" style="width: 100%; margin-top: 10px; font-weight: 600;">▶ Применить изменения</button>
 
             ${!data.isPregnant ? `
-                <div class="repro-manual-box">
-                    <div class="repro-sub-header" style="color: #f472b6; margin-top: 0;">Инициализировать беременность</div>
-                    <div class="repro-row">
-                        <label>Срок (в неделях):</label>
-                        <input type="number" id="repro-manual-weeks" class="repro-input" value="4" min="0" max="40"/>
+                <div style="background: rgba(244, 114, 182, 0.03); border: 1px dashed rgba(244, 114, 182, 0.2); border-radius: 8px; padding: 12px; margin: 14px 0 10px 0;">
+                    <div style="font-size: 0.85em; font-weight: 700; color: #f472b6; margin-bottom: 8px; text-transform: uppercase;">Инициализировать беременность</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <label style="font-size: 0.9em; opacity: 0.85;">Срок (в неделях):</label>
+                        <input type="number" id="repro-manual-weeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;" value="4" min="0" max="40"/>
                     </div>
-                    <div class="repro-row">
-                        <label>Количество детей:</label>
-                        <input type="number" id="repro-manual-count" class="repro-input" value="1" min="1" max="3"/>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <label style="font-size: 0.9em; opacity: 0.85;">Количество детей:</label>
+                        <input type="number" id="repro-manual-count" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit;" value="1" min="1" max="3"/>
                     </div>
-                    <button id="repro-btn-manual-preg" class="repro-btn-pink">🤰 Установить беременность</button>
+                    <button id="repro-btn-manual-preg" class="menu_button" style="width: 100%; background: #db2777; color: white; font-weight: 600;">🤰 Установить беременность</button>
                 </div>
             ` : ''}
 
             ${data.isPregnant ? `
-                <button id="repro-reset-pregnancy-only" class="repro-btn-warning">🚼 Сбросить только беременность</button>
+                <button id="repro-reset-pregnancy-only" class="menu_button type_warning" style="width: 100%; margin-top: 10px; font-weight: 600;">🚼 Сбросить только беременность</button>
             ` : ''}
 
-            <button id="repro-reset" class="repro-btn-danger">Полный сброс трекера чата</button>
+            <button id="repro-reset" class="menu_button type_danger" style="width: 100%; margin-top: 10px; font-weight: 600;">Полный сброс трекера чата</button>
         </div>
     `;
 
-    // Привязываем корневой контейнер к нативному классу .inline-drawer ядра ST
+    // Цепляемся строго за нативный класс .inline-drawer ядра ST
     let container = $('#repro-system-extension-container');
     if (container.length === 0) {
         container = $('<div id="repro-system-extension-container" class="inline-drawer"></div>');
@@ -347,7 +348,7 @@ function renderUI() {
     }
     container.html(html);
 
-    // Логика переключения
+    // Клик по нативному хедеру
     $('.repro-header-click').off('click').on('click', function() {
         isMenuCollapsed = !isMenuCollapsed;
         $('#repro-content-wrapper').slideToggle(150);
@@ -359,6 +360,7 @@ function renderUI() {
         }
     });
 
+    // Обработчики селекторов
     $('#repro-mode').on('change', function() {
         settings.mode = $(this).val();
         saveSettingsDebounced();
@@ -443,12 +445,6 @@ function renderUI() {
 }
 
 jQuery(async () => {
-    // Внедряем динамический Cache-Buster (штамп времени), ломающий старый мобильный кэш при перезагрузке
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = `/extensions/st-advanced-reproductive-system/style.css?v=${Date.now()}`;
-    document.head.appendChild(link);
-
     loadSettings();
 
     eventSource.on(event_types.MESSAGE_RECEIVED, async (messageIndex) => {
