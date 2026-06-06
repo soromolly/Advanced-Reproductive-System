@@ -76,33 +76,26 @@ function getBodyPhase() {
     }
 }
 
-// УНИВЕРСАЛЬНЫЙ ГИБРИДНЫЙ ПАРСЕР ДАТ
 function parseRpDateFromText(text) {
     if (!text) return null;
 
-    // Вариант 1: Текстовый формат месяца капсом ("14 ИЮЛЯ 2026 ГОДА")
     const textRegex = /(\d{1,2})\s+([а-яёА-ЯЁ]+)\s+(\d{4})/i;
     const textMatch = text.match(textRegex);
-    
     if (textMatch) {
         const day = parseInt(textMatch[1]);
         const monthStr = textMatch[2].toLowerCase();
         const year = parseInt(textMatch[3]);
-        
         if (MONTHS_RU[monthStr] !== undefined && day >= 1 && day <= 31) {
             return new Date(year, MONTHS_RU[monthStr], day);
         }
     }
 
-    // Вариант 2: Цифровой формат через точки или слэши ("06.06.2026")
     const numRegex = /(\d{1,2})[\.\/](\d{1,2})[\.\/](\d{4})/;
     const numMatch = text.match(numRegex);
-
     if (numMatch) {
         const day = parseInt(numMatch[1]);
-        const month = parseInt(numMatch[2]) - 1; // В JS нумерация месяцев с 0 до 11
+        const month = parseInt(numMatch[2]) - 1; 
         const year = parseInt(numMatch[3]);
-
         if (month >= 0 && month <= 11 && day >= 1 && day <= 31) {
             return new Date(year, month, day);
         }
@@ -220,6 +213,7 @@ function triggerPregnancy(data) {
     toastr.success(`🚨 ЗАЧАТИЕ ПРОИЗОШЛО! Успешная имплантация в матке.`);
 }
 
+// УМНАЯ ИНЖЕКЦИЯ ПРОМПТА С ЖЕСТКИМ РАЗДЕЛЕНИЕМ ЛОГИКИ ФАЗ
 function updatePromptInjection() {
     if (!settings.isEnabled) {
         setExtensionPrompt(EXTENSION_NAME, '', extension_prompt_types.IN_CHAT, 0);
@@ -252,8 +246,12 @@ function updatePromptInjection() {
         prompt += `AI Instruction: Focus purely on describing believable physical symptoms matching a ${data.pregnancyWeeks}-week term (e.g., subtle fatigue, morning nausea, sensory sensitivity, changes in appetite, or scent traits if Omegaverse).\n`;
     } else {
         prompt += `Current Cycle Day: ${data.cycleDay}/${settings.cycleLength} | Phase: ${phase}\n`;
-        if (phase.includes('Овуляция') || phase.includes('Течка')) {
-            prompt += `Alert: {{user}} is currently highly fertile (ovulation/heat). Act accordingly to the context.\n`;
+        
+        // РАЗДЕЛЕНИЕ РЕАКЦИИ: ТЕЧКА ПРОТИВ ОВУЛЯЦИИ
+        if (phase.includes('Течка')) {
+            prompt += `🚨 CRITICAL MANDATORY DIRECTIVE FOR {{char}}: {{user}} is currently in OMEGA HEAT (течка). Their body is involuntarily emitting an incredibly potent, sweet, sharp, and intoxicating Omega pheromone scent. This state is completely obvious, primal, and unignorable to anyone in the same room. {{char}} (and any surrounding Alphas/Betas) MUST immediately notice this scent, describe their instinctual physical reaction to it (pupil dilation, heavy breathing, sudden possessive/protective attraction, or primitive agitation), and acknowledge the heavy pheromonal atmosphere thick in the air.\n`;
+        } else if (phase.includes('Овуляция')) {
+            prompt += `⚠️ STRICT CONTRA-INDICATION: {{user}} is currently ovulating. This is a purely internal, microscopic, scentless, and 100% invisible biological process. No one around them (including {{char}}) can sense, smell, or know this. {{char}} MUST act completely oblivious to {{user}}'s fertility status. Do NOT mention, hint, or react to ovulation in any way.\n`;
         }
     }
 
@@ -265,7 +263,6 @@ function renderUI() {
     const isRealism = settings.mode === 'realism';
     const statusLabel = isRealism ? 'Текущая фаза:' : 'Текущее состояние омеги:';
 
-    // Форматируем вывод сохраненного ISO-штампа даты в красивый вид для карточки плагина
     let displayDate = 'Ожидание даты';
     if (data.lastRpDate) {
         const parts = data.lastRpDate.split('-');
@@ -390,6 +387,7 @@ function renderUI() {
         updatePromptInjection();
     });
 
+    // Изменение физиологии
     $('#repro-gender').on('change', function() {
         settings.gender = $(this).val();
         saveSettingsDebounced();
