@@ -1,11 +1,11 @@
 import { 
-    modules, 
     saveSettingsDebounced, 
     eventSource, 
     event_types,
     setExtensionPrompt,
     extension_prompt_types
 } from '../../../../script.js';
+import { extension_settings } from '../../../extensions.js';
 
 const EXTENSION_NAME = 'st-advanced-reproductive-system';
 
@@ -37,9 +37,10 @@ const MONTHS_RU = {
 };
 
 function getCurrentChatId() {
-    return typeof SillyTavern?.getContext === 'function' 
-        ? SillyTavern.getContext().chatId 
-        : (modules.chat?.getChatId() || 'default');
+    if (typeof SillyTavern?.getContext === 'function') {
+        return SillyTavern.getContext().chatId || window.chat_id || 'default';
+    }
+    return window.chat_id || 'default';
 }
 
 function getChatBodyData() {
@@ -51,9 +52,10 @@ function getChatBodyData() {
 }
 
 function loadSettings() {
-    if (modules.settings && modules.settings[EXTENSION_NAME]) {
-        settings = Object.assign(settings, modules.settings[EXTENSION_NAME]);
+    if (!extension_settings[EXTENSION_NAME]) {
+        extension_settings[EXTENSION_NAME] = Object.assign({}, DEFAULT_SETTINGS);
     }
+    settings = extension_settings[EXTENSION_NAME];
     renderUI();
     updatePromptInjection();
 }
@@ -366,6 +368,10 @@ function renderUI() {
         toastr.info('Все физиологические данные текущего чата были очищены.');
     });
 }
+
+window.addEventListener('DOMContentLoaded', () => {
+    loadSettings();
+});
 
 jQuery(async () => {
     loadSettings();
