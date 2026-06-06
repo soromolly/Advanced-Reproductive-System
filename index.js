@@ -76,6 +76,7 @@ function getBodyPhase() {
     }
 }
 
+// 1. АБСОЛЮТНЫЙ ПАРСЕР ДАТ (06.06.2026)
 function parseRpDateFromText(text) {
     if (!text) return null;
 
@@ -103,11 +104,59 @@ function parseRpDateFromText(text) {
     return null;
 }
 
+// 2. ОТНОСИТЕЛЬНЫЙ ПАРСЕР ТАЙМСКИПОВ ("Прошло 2 месяца")
+function parseRelativeTimeFromText(text) {
+    const regex = /прошло\s+(\d+)\s+(дне[йяа]|недел[ьия]|месяц[аев]|ле[тв]|год[аоу]?)/i;
+    const match = text.match(regex);
+    if (!match) return null;
+
+    const count = parseInt(match[1]);
+    const unit = match[2].toLowerCase();
+    const data = getChatBodyData();
+
+    // Если в системе уже зафиксирована дата, считаем дельту дней абсолютно точно по календарю
+    if (data.lastRpDate) {
+        const baseDate = new Date(data.lastRpDate);
+        const futureDate = new Date(data.lastRpDate);
+
+        if (unit.startsWith('дн')) futureDate.setDate(futureDate.getDate() + count);
+        else if (unit.startsWith('нед')) futureDate.setDate(futureDate.getDate() + (count * 7));
+        else if (unit.startsWith('мес')) futureDate.setMonth(futureDate.getMonth() + count);
+        else if (unit.startsWith('лет') || unit.startsWith('год')) futureDate.setFullYear(futureDate.getFullYear() + count);
+
+        const timeDiff = futureDate - baseDate;
+        const totalDays = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+        
+        // Переписываем текущую дату на новую будущую
+        data.lastRpDate = futureDate.toISOString().split('T')[0];
+        return totalDays;
+    }
+
+    // Если базовой даты в системе не было, используем среднее математическое приближение
+    if (unit.startsWith('дн')) return count;
+    if (unit.startsWith('нед')) return count * 7;
+    if (unit.startsWith('мес')) return count * 30;
+    if (unit.startsWith('лет') || unit.startsWith('год')) return count * 365;
+
+    return null;
+}
+
 function handleTimeProgression(text) {
+    const data = getChatBodyData();
+
+    // А. Сначала проверяем, не написал ли пользователь относительный таймскип ("Прошло 2 месяца")
+    const relativeDays = parseRelativeTimeFromText(text);
+    if (relativeDays !== null && relativeDays > 0) {
+        advanceBodyTime(relativeDays);
+        saveSettingsDebounced();
+        renderUI();
+        return; // Выходим, чтобы не конфликтовать с поиском абсолютных дат
+    }
+
+    // Б. Если таймскипа нет, ищем классическую абсолютную дату шаблона (06.06.2026)
     const currentRpDate = parseRpDateFromText(text);
     if (!currentRpDate) return;
 
-    const data = getChatBodyData();
     const currentRpDateStr = currentRpDate.toISOString().split('T')[0];
 
     if (data.lastRpDate && data.lastRpDate !== currentRpDateStr) {
@@ -475,7 +524,7 @@ function renderUI() {
 jQuery(async () => {
     loadSettings();
 
-    // ХУК НА ОТПРАВКУ ТВОЕГО СООБЩЕНИЯ (Мгновенный пре-генерационный перехват)
+    // МГНОВЕННЫЙ ПЕРЕХВАТ ПРИ ОТПРАВКЕ ТВОЕГО СООБЩЕНИЯ
     eventSource.on(event_types.MESSAGE_SENT, async (messageIndex) => {
         const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
         const chat = context ? context.chat : window.chat;
@@ -484,15 +533,15 @@ jQuery(async () => {
         const text = chat[messageIndex].mes;
         if (!text) return;
 
-        // Если ты сама написала новую дату в посте — перехватываем её до отправки запроса в LLM
+        // Сканируем текст пользователя на таймскип ЕЩЁ ДО ТОГО, как запрос улетит ИИ
         handleTimeProgression(text);
         checkConceptionTrigger(text);
         
-        // Насильно форсируем обновление кэша скрытых промптов Таверны
+        // В ту же миллисекунду зашиваем обновлённый промпт
         updatePromptInjection();
     });
 
-    // ХУК НА ПОЛУЧЕНИЕ ОТВЕТА БОТА
+    // ПЕРЕХВАТ ПРИ ПОЛУЧЕНИИ ОТВЕТА БОТА (на случай, если бот сам сделал таймскип)
     eventSource.on(event_types.MESSAGE_RECEIVED, async (messageIndex) => {
         const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
         const chat = context ? context.chat : window.chat;
