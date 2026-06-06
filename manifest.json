@@ -3,9 +3,9 @@
     "loading_order": 10,
     "requires": [],
     "optional": [],
-    "js": "index.js",
+    "js": "index_v3.js",
     "css": "style.css",
     "author": "AI Developer",
-    "version": "1.0.0",
+    "version": "1.0.3",
     "description": "Автономное отслеживание цикла, течки и скрытой от ИИ беременности на основе RP-дат из ворлдбита."
 }
