@@ -30,7 +30,7 @@ const DEFAULT_BODY_DATA = {
 };
 
 let settings = Object.assign({}, DEFAULT_SETTINGS);
-let isMenuCollapsed = true; // По умолчанию свернуто, как и все нативные плагины
+let isMenuCollapsed = true; // По умолчанию всегда свернуто, как у нативных плагинов
 
 const MONTHS_RU = {
     'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3, 'мая': 4, 'июня': 5,
@@ -248,7 +248,6 @@ function renderUI() {
     const isRealism = settings.mode === 'realism';
     const statusLabel = isRealism ? 'Текущая фаза:' : 'Текущее состояние омеги:';
 
-    // Используем ТОЛЬКО чистые нативные классы SillyTavern без кастомных оберток
     const html = `
         <div class="inline-drawer-toggle repro-header-click">
             <span class="inline-drawer-title" style="color: #f472b6 !important; font-weight: 600;">🧬 Система Репродукции V2</span>
@@ -314,7 +313,6 @@ function renderUI() {
                 </div>
             `}
 
-            <!-- ИСПОЛЬЗУЕМ НАУТИВНЫЕ КЛАССЫ КНОПОК SILLYTAVERN -->
             <button id="repro-apply-params" class="menu_button type_primary" style="width: 100%; margin-top: 10px; font-weight: 600;">▶ Применить изменения</button>
 
             ${!data.isPregnant ? `
@@ -340,7 +338,6 @@ function renderUI() {
         </div>
     `;
 
-    // Цепляемся строго за нативный класс .inline-drawer ядра ST
     let container = $('#repro-system-extension-container');
     if (container.length === 0) {
         container = $('<div id="repro-system-extension-container" class="inline-drawer"></div>');
@@ -348,7 +345,6 @@ function renderUI() {
     }
     container.html(html);
 
-    // Клик по нативному хедеру
     $('.repro-header-click').off('click').on('click', function() {
         isMenuCollapsed = !isMenuCollapsed;
         $('#repro-content-wrapper').slideToggle(150);
@@ -360,7 +356,6 @@ function renderUI() {
         }
     });
 
-    // Обработчики селекторов
     $('#repro-mode').on('change', function() {
         settings.mode = $(this).val();
         saveSettingsDebounced();
