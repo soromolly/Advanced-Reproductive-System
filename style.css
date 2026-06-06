@@ -93,3 +93,19 @@
 .repro-btn-danger:hover {
     background: #dc2626;
 }
+.repro-btn-primary {
+    background: #0284c7;
+    color: #ffffff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    width: 100%;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 14px;
+    transition: background 0.2s;
+}
+
+.repro-btn-primary:hover {
+    background: #0369a1;
+}
