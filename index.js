@@ -213,7 +213,6 @@ function triggerPregnancy(data) {
     toastr.success(`🚨 ЗАЧАТИЕ ПРОИЗОШЛО! Успешная имплантация в матке.`);
 }
 
-// УМНАЯ ИНЖЕКЦИЯ ПРОМПТА С ЖЕСТКИМ РАЗДЕЛЕНИЕМ ЛОГИКИ ФАЗ
 function updatePromptInjection() {
     if (!settings.isEnabled) {
         setExtensionPrompt(EXTENSION_NAME, '', extension_prompt_types.IN_CHAT, 0);
@@ -247,7 +246,6 @@ function updatePromptInjection() {
     } else {
         prompt += `Current Cycle Day: ${data.cycleDay}/${settings.cycleLength} | Phase: ${phase}\n`;
         
-        // РАЗДЕЛЕНИЕ РЕАКЦИИ: ТЕЧКА ПРОТИВ ОВУЛЯЦИИ
         if (phase.includes('Течка')) {
             prompt += `🚨 CRITICAL MANDATORY DIRECTIVE FOR {{char}}: {{user}} is currently in OMEGA HEAT (течка). Their body is involuntarily emitting an incredibly potent, sweet, sharp, and intoxicating Omega pheromone scent. This state is completely obvious, primal, and unignorable to anyone in the same room. {{char}} (and any surrounding Alphas/Betas) MUST immediately notice this scent, describe their instinctual physical reaction to it (pupil dilation, heavy breathing, sudden possessive/protective attraction, or primitive agitation), and acknowledge the heavy pheromonal atmosphere thick in the air.\n`;
         } else if (phase.includes('Овуляция')) {
@@ -318,6 +316,13 @@ function renderUI() {
             </div>
 
             <div style="font-size: 0.85em; font-weight: 700; color: var(--text_accent, #38bdf8); margin: 12px 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Параметры</div>
+            
+            <!-- НОВОЕ ПОЛЕ: РУЧНОЙ ВЫБОР ТЕКУЩЕЙ RP-ДАТЫ -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <label style="font-size: 0.9em; opacity: 0.85;">RP Дата:</label>
+                <input type="date" id="repro-input-rpdate" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${data.lastRpDate || ''}"/>
+            </div>
+
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <label style="font-size: 0.9em; opacity: 0.85;">Цикл (дней):</label>
                 <input type="number" id="repro-input-cycle" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${settings.cycleLength}"/>
@@ -387,7 +392,6 @@ function renderUI() {
         updatePromptInjection();
     });
 
-    // Изменение физиологии
     $('#repro-gender').on('change', function() {
         settings.gender = $(this).val();
         saveSettingsDebounced();
@@ -406,6 +410,12 @@ function renderUI() {
         const bodyData = getChatBodyData();
         settings.cycleLength = parseInt($('#repro-input-cycle').val()) || 28;
         
+        // Считываем дату из календаря
+        const manualDateVal = $('#repro-input-rpdate').val();
+        if (manualDateVal) {
+            bodyData.lastRpDate = manualDateVal;
+        }
+
         if (bodyData.isPregnant) {
             bodyData.pregnancyWeeks = parseInt($('#repro-input-weeks').val()) || 0;
             bodyData.pregnancyDays = 0; 
@@ -440,6 +450,7 @@ function renderUI() {
         toastr.success(`Беременность установлена вручную: ${weeks} нед.`);
     });
 
+    // Изменение логики точечного сброса
     $('#repro-reset-pregnancy-only').on('click', function() {
         const bodyData = getChatBodyData();
         bodyData.isPregnant = false;
