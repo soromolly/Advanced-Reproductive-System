@@ -32,7 +32,7 @@ const DEFAULT_BODY_DATA = {
 let settings = Object.assign({}, DEFAULT_SETTINGS);
 let isMenuCollapsed = true; 
 
-// Словарь месяцев для парсинга логов (RU / EN)
+// ОБЪЕДИНЕННЫЙ МУЛЬТИЯЗЫЧНЫЙ СЛОВАРЬ МЕСЯЦЕВ (RU / EN)
 const MONTHS = {
     'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3, 'мая': 4, 'июня': 5,
     'июля': 6, 'августа': 7, 'сентября': 8, 'октября': 9, 'ноября': 10, 'декабря': 11,
@@ -85,7 +85,6 @@ const TRANSLATIONS = {
         toastTimePassed: 'Репродуктивная система: В РП прошло дней: ',
         toastConception: '🚨 ЗАЧАТИЕ ПРОИЗОШЛО! Успешная имплантация в матке.',
         toastPregEnd: 'Срок беременности подошел к концу! Пора рожать.',
-        // Фазы цикла
         pregnancy: 'Беременность 🤰',
         pregnancyOmega: 'Беременность (Омега) 🤰',
         menstruation: 'Менструация 🩸',
@@ -115,7 +114,7 @@ const TRANSLATIONS = {
         wombMap: 'Womb Content:',
         babiesCount: 'Babies:',
         babiesSex: 'Sex:',
-        sync: 'Sychronized:',
+        sync: 'Synchronized:',
         waitingDate: 'Waiting for date',
         paramsHeader: 'Parameters',
         rpDateLabel: 'RP Date:',
@@ -136,7 +135,6 @@ const TRANSLATIONS = {
         toastTimePassed: 'Reproductive system: Days passed in RP: ',
         toastConception: '🚨 CONCEPTION OCCURRED! Successful implantation in the womb.',
         toastPregEnd: 'Pregnancy term has ended! Time to give birth.',
-        // Cycle phases
         pregnancy: 'Pregnancy 🤰',
         pregnancyOmega: 'Pregnancy (Omega) 🤰',
         menstruation: 'Menstruation 🩸',
@@ -147,18 +145,12 @@ const TRANSLATIONS = {
     }
 };
 
-// Функция определения языка СНГ / Мир
 function getLanguage() {
-    // Считываем язык из глобальных настроек SillyTavern i18n
     const currentLang = (typeof window.i18n?.language === 'string') ? window.i18n.language.toLowerCase() : 'ru';
-    
-    // Список кодов языков стран СНГ
     const sngLanguages = ['ru', 'uk', 'be', 'kk', 'uz', 'az', 'hy', 'tg', 'tk', 'ky'];
-    
     return sngLanguages.includes(currentLang) ? 'ru' : 'en';
 }
 
-// Быстрый хелпер для получения строки перевода
 function getText(key) {
     const lang = getLanguage();
     return TRANSLATIONS[lang][key] || TRANSLATIONS['en'][key];
@@ -461,7 +453,6 @@ function updatePromptInjection() {
 
 function renderUI() {
     const data = getChatBodyData();
-    const lang = getLanguage();
 
     let displayDate = getText('waitingDate');
     if (data.lastRpDate) {
@@ -472,7 +463,7 @@ function renderUI() {
     const html = `
         <div class="repro-custom-btn-toggle" style="display: flex; justify-content: space-between; align-items: center; background: var(--input-bg, #1e1e2a); border: 1px solid var(--input-border, #334155); padding: 10px 14px; border-radius: ${isMenuCollapsed ? '10px' : '10px 10px 0 0'}; cursor: pointer; user-select: none; font-size: 14px; transition: background 0.15s;">
             <span style="color: #f472b6 !important; font-weight: 600;">${getText('title')}</span>
-            <div id="repro-toggle-arrow" class="inline-drawer-icon fa-solid ${isMenuCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'}" style="opacity: 0.6; font-size: 12px; margin-right: 4px;"></div>
+            <i id="repro-toggle-arrow" class="fa-solid ${isMenuCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'}" style="opacity: 0.6; font-size: 12px; margin-right: 4px;"></i>
         </div>
         
         <div id="repro-content-wrapper" style="${isMenuCollapsed ? 'display: none;' : 'display: block;'} background: rgba(0, 0, 0, 0.15); border: 1px solid var(--input-border, #334155); border-top: none; border-radius: 0 0 10px 10px; padding: 14px; box-sizing: border-box;">
@@ -682,6 +673,14 @@ function renderUI() {
 
 jQuery(async () => {
     loadSettings();
+
+    // ХУК НА СМЕНУ ЛОКАЛИЗАЦИИ/ЯЗЫКА В ТАВЕРНЕ
+    // Ловит момент, когда пользователь кликает переключатель языков в сайдбаре
+    if (typeof eventSource?.on === 'function') {
+        eventSource.on('i18n_language_changed', () => {
+            renderUI(); // Мгновенно перерисовываем UI на лету под новый язык
+        });
+    }
 
     eventSource.on(event_types.MESSAGE_SENT, async (messageIndex) => {
         const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
