@@ -6,6 +6,8 @@ import {
     extension_prompt_types
 } from '../../../../script.js';
 import { extension_settings } from '../../../extensions.js';
+// Импортируем генератор симптомов из соседнего файла symptoms.js
+import { getRandomSymptoms } from './symptoms.js';
 
 const EXTENSION_NAME = 'st-advanced-reproductive-system';
 
@@ -26,7 +28,8 @@ const DEFAULT_BODY_DATA = {
     pregnancyWeeks: 0,
     pregnancyDays: 0,
     babiesCount: 0,
-    babiesGenders: []
+    babiesGenders: [],
+    currentSymptoms: [] // Храним выпавшие симптомы здесь
 };
 
 let settings = Object.assign({}, DEFAULT_SETTINGS);
@@ -91,7 +94,8 @@ const TRANSLATIONS = {
         ovulation: 'Овуляция (Окно зачатия) ✨',
         follicularLuteal: 'Фолликулярная/Лютеиновая фаза',
         heat: 'Течка (Пик фертильности) 🔥',
-        quiescence: 'Период покоя'
+        quiescence: 'Период покоя',
+        symptomsTitle: '🎯 Симптомы организма:'
     },
     en: {
         title: '🧬 Reproductive System V2',
@@ -141,7 +145,8 @@ const TRANSLATIONS = {
         ovulation: 'Ovulation (Conception Window) ✨',
         follicularLuteal: 'Follicular/Luteal Phase',
         heat: 'Heat (Peak Fertility) 🔥',
-        quiescence: 'Quiescence Period'
+        quiescence: 'Quiescence Period',
+        symptomsTitle: '🎯 Body Symptoms:'
     }
 };
 
@@ -176,6 +181,11 @@ function loadSettings() {
         extension_settings[EXTENSION_NAME] = Object.assign({}, DEFAULT_SETTINGS);
     }
     settings = extension_settings[EXTENSION_NAME];
+    
+    // Генерируем симптомы при первой загрузке
+    const data = getChatBodyData();
+    updateSymptomsData(data);
+
     renderUI();
     updatePromptInjection();
 }
@@ -192,6 +202,35 @@ function getBodyPhase() {
     } else {
         if (day >= 12 && day <= 15) return getText('heat');
         return getText('quiescence');
+    }
+}
+
+/**
+ * Проверяет текущую фазу и наполняет массив случайными симптомами
+ */
+function updateSymptomsData(data) {
+    if (data.isPregnant) {
+        data.currentSymptoms = [];
+        return;
+    }
+
+    // Если на сегодня симптомы уже выбраны — не трогаем их
+    if (data.currentSymptoms && data.currentSymptoms.length > 0) return;
+
+    const phase = getBodyPhase();
+    let phaseKey = null;
+
+    if (phase === getText('menstruation')) {
+        phaseKey = 'menstruation';
+    } else if (phase === getText('ovulation') || phase === getText('heat')) {
+        phaseKey = 'ovulation';
+    }
+
+    if (phaseKey) {
+        // Достаем случайные симптомы (от 1 до 3 штук) из symptoms.js
+        data.currentSymptoms = getRandomSymptoms(phaseKey, 3);
+    } else {
+        data.currentSymptoms = []; // Нейтральные фазы остаются без симптомов
     }
 }
 
@@ -334,6 +373,8 @@ function advanceBodyTime(days) {
         if (data.cycleDay > settings.cycleLength) {
             data.cycleDay = ((data.cycleDay - 1) % settings.cycleLength) + 1;
         }
+        // Время ушло вперед — сбрасываем старые симптомы, чтобы в новый день сгенерировались свежие
+        data.currentSymptoms = [];
     }
 }
 
@@ -378,6 +419,7 @@ function triggerPregnancy(data) {
     data.isPregnant = true;
     data.pregnancyWeeks = 0;
     data.pregnancyDays = 0;
+    data.currentSymptoms = []; // Сбрасываем симптомы обычного цикла
 
     const roll = Math.random() * 100;
     if (settings.mode === 'omegaverse') {
@@ -441,6 +483,11 @@ function updatePromptInjection() {
     } else {
         prompt += `Current Cycle Day: ${data.cycleDay}/${settings.cycleLength} | Phase: ${phase}\n`;
         
+        // Передаем текущие симптомы в промпт ИИ
+        if (data.currentSymptoms && data.currentSymptoms.length > 0) {
+            prompt += `Current Physical Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
+        }
+
         if (phase.includes('Течка') || phase.includes('Heat')) {
             prompt += `🚨 CRITICAL MANDATORY DIRECTIVE FOR {{char}}: {{user}} is currently in OMEGA HEAT (течка). Their body is involuntarily emitting an incredibly potent, sweet, sharp, and intoxicating Omega pheromone scent. This state is completely obvious, primal, and unignorable to anyone in the same room. {{char}} (and any surrounding Alphas/Betas) MUST immediately notice this scent, describe their instinctual physical reaction to it (pupil dilation, heavy breathing, sudden possessive/protective attraction, or primitive agitation), and acknowledge the heavy pheromonal atmosphere thick in the air.\n`;
         } else if (phase.includes('Овуляция') || phase.includes('Ovulation')) {
@@ -454,10 +501,26 @@ function updatePromptInjection() {
 function renderUI() {
     const data = getChatBodyData();
 
+    // Пересчитываем симптомы перед отрисовкой
+    updateSymptomsData(data);
+
     let displayDate = getText('waitingDate');
     if (data.lastRpDate) {
         const parts = data.lastRpDate.split('-');
         displayDate = `${parts[2]}.${parts[1]}.${parts[0]}`;
+    }
+
+    // Рендерим HTML-блок со списком симптомов, если они есть
+    let symptomsHtml = '';
+    if (data.currentSymptoms && data.currentSymptoms.length > 0) {
+        symptomsHtml = `
+            <div style="margin: 5px 0 10px 0; padding: 10px; background: rgba(244, 114, 182, 0.12); border-left: 3px solid #f472b6; border-radius: 4px; text-align: left;">
+                <strong style="font-size: 0.9em; color: #f472b6; display: block; margin-bottom: 5px;">${getText('symptomsTitle')}</strong>
+                <ul style="margin: 0; padding-left: 16px; font-size: 0.85em; line-height: 1.4; opacity: 0.95; color: var(--text-color);">
+                    ${data.currentSymptoms.map(s => `<li style="margin-bottom: 2px;">• ${s}</li>`).join('')}
+                </ul>
+            </div>
+        `;
     }
 
     const html = `
@@ -495,6 +558,10 @@ function renderUI() {
 
             <div style="background: rgba(0, 0, 0, 0.25); border-left: 3px solid #f472b6; border-radius: 4px; padding: 10px; margin: 12px 0; font-size: 0.9em; text-align: left;">
                 <div style="margin-bottom: 4px;"><strong>${settings.mode === 'realism' ? getText('phaseRealism') : getText('phaseOmega')}</strong> <span style="color: #4ade80; font-weight: 700;">${getBodyPhase()}</span></div>
+                
+                <!-- ВСТАВКА СЛУЧАЙНЫХ СИМПТОМОВ -->
+                ${symptomsHtml}
+
                 ${data.isPregnant ? `
                     <div style="margin-bottom: 4px;"><strong>${getText('termInRp')}</strong> ${data.pregnancyWeeks} ${getText('weeksShort')} ${data.pregnancyDays} ${getText('daysShort')}</div>
                     <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #f472b6;">
@@ -508,8 +575,6 @@ function renderUI() {
                 <div style="font-size: 0.85em; color: #64748b; margin-top: 6px;">📅 ${getText('sync')} ${displayDate}</div>
             </div>
 
-            <div style="font-size: 0.85em; font-weight: 700; color: var(--text_accent, #38bdf8); margin: 12px 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">${getText('paramsHeader')}</div>
-            
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <label style="font-size: 0.9em; opacity: 0.85;">${getText('rpDateLabel')}</label>
                 <input type="date" id="repro-input-rpdate" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${data.lastRpDate || ''}"/>
@@ -579,6 +644,8 @@ function renderUI() {
 
     $('#repro-mode').on('change', function() {
         settings.mode = $(this).val();
+        // При смене режима сбрасываем симптомы, чтобы они обновились под новую логику фаз
+        getChatBodyData().currentSymptoms = [];
         saveSettingsDebounced();
         renderUI();
         updatePromptInjection();
@@ -614,6 +681,9 @@ function renderUI() {
             bodyData.cycleDay = parseInt($('#repro-input-day').val()) || 1;
         }
 
+        // При ручном переключении параметров сбрасываем симптомы, чтобы они заново сгенерировались
+        bodyData.currentSymptoms = [];
+
         saveSettingsDebounced();
         renderUI();
         updatePromptInjection();
@@ -629,6 +699,7 @@ function renderUI() {
         bodyData.pregnancyWeeks = weeks;
         bodyData.pregnancyDays = 0;
         bodyData.babiesCount = count;
+        bodyData.currentSymptoms = []; // СБрос цикличных симптомов
 
         bodyData.babiesGenders = [];
         const lang = getLanguage();
@@ -654,6 +725,7 @@ function renderUI() {
         bodyData.pregnancyDays = 0;
         bodyData.babiesCount = 0;
         bodyData.babiesGenders = [];
+        bodyData.currentSymptoms = [];
 
         saveSettingsDebounced();
         renderUI();
@@ -675,10 +747,9 @@ jQuery(async () => {
     loadSettings();
 
     // ХУК НА СМЕНУ ЛОКАЛИЗАЦИИ/ЯЗЫКА В ТАВЕРНЕ
-    // Ловит момент, когда пользователь кликает переключатель языков в сайдбаре
     if (typeof eventSource?.on === 'function') {
         eventSource.on('i18n_language_changed', () => {
-            renderUI(); // Мгновенно перерисовываем UI на лету под новый язык
+            renderUI(); 
         });
     }
 
