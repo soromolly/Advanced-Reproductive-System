@@ -20,22 +20,23 @@ const DEFAULT_SETTINGS = {
     chatPregnancyData: {}  
 };
 
-const DEFAULT_BODY_DATA = {
-    cycleDay: 1,
-    lastRpDate: null,
-    isPregnant: false,
-    pregnancyWeeks: 0,
-    pregnancyDays: 0,
-    babiesCount: 0,
-    babiesGenders: [],
-    currentSymptoms: [],
-    
-    rolledTrimesters: { 1: false, 2: false, 3: false },
-    activeComplication: null,
-
-    postpartumDays: 0,
-    childrenList: [] 
-};
+// Функция-генератор ДЛЯ ПОЛНОЙ ИЗОЛЯЦИИ памяти каждого отдельного чата
+function createDefaultBodyData() {
+    return {
+        cycleDay: 1,
+        lastRpDate: null,
+        isPregnant: false,
+        pregnancyWeeks: 0,
+        pregnancyDays: 0,
+        babiesCount: 0,
+        babiesGenders: [],
+        currentSymptoms: [],
+        rolledTrimesters: { 1: false, 2: false, 3: false },
+        activeComplication: null,
+        postpartumDays: 0,
+        childrenList: [] 
+    };
+}
 
 let settings = Object.assign({}, DEFAULT_SETTINGS);
 let isMenuCollapsed = true; 
@@ -99,7 +100,7 @@ const TRANSLATIONS = {
         menstruation: 'Menstruation 🩸', ovulation: 'Ovulation (Conception Window) ✨',
         follicularLuteal: 'Follicular/Luteal Phase', heat: 'Heat (Peak Fertility) 🔥', quiescence: 'Quiescence Period',
         symptomsTitle: '🎯 Body Symptoms:', fetusTitle: '👶 Fetus & Body Development:',
-        complicationTitle: '⚠️ Medical Complication:', cureBtn: '💊 Treat / Almacen Complication',
+        complicationTitle: '⚠️ Medical Complication:', cureBtn: '💊 Treat / Alleviate Complication',
         postpartumPhase: 'Postpartum Recovery 🩹', newbornTitle: '🍼 Children in Family:',
         giveBirthBtn: '🔔 GIVE BIRTH (Story Trigger)'
     }
@@ -123,11 +124,12 @@ function getCurrentChatId() {
 function getChatBodyData() {
     const chatId = getCurrentChatId();
     if (!settings.chatPregnancyData[chatId]) {
-        settings.chatPregnancyData[chatId] = Object.assign({}, DEFAULT_BODY_DATA);
+        settings.chatPregnancyData[chatId] = createDefaultBodyData();
     }
     const data = settings.chatPregnancyData[chatId];
     if (data.postpartumDays === undefined) data.postpartumDays = 0;
     if (!data.childrenList) data.childrenList = [];
+    if (!data.rolledTrimesters) data.rolledTrimesters = { 1: false, 2: false, 3: false };
     return data;
 }
 
@@ -343,7 +345,6 @@ function processBirthTrigger() {
     const data = getChatBodyData();
     if (!data.isPregnant) return;
 
-    // ИСПРАВЛЕНИЕ ЗДЕСЬ: Если это старый сейв и hiddenGenetics пуст, генерируем реальное описание на лету!
     for (let i = 0; i < data.babiesCount; i++) {
         const gen = (data.hiddenGenetics && data.hiddenGenetics[i]) ? data.hiddenGenetics[i] : generateChildGenetics();
         data.childrenList.push({
@@ -470,7 +471,7 @@ function renderUI() {
     if (data.childrenList?.length > 0) {
         familyHtml = `<div style="margin: 10px 0; padding: 10px; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 6px; text-align: left; font-size: 0.85em;">
             <strong style="color: #f472b6; display: block; margin-bottom: 6px;">${getText('newbornTitle')}</strong>
-            ${data.childrenList.map((c, i) => `<div style="margin-bottom: 4px;">👶 Ребенок ${i+1}: <b>${c.gender}</b> (Глаза: <span style="color: #38bdf8;">${c.eyes}</span>, Волосы: <span style="color: #fbbf24;">${c.hair}</span>)</div>`).join('')}
+            ${data.childrenList.map((c, i) => `<div style="margin-bottom: 4px;">👶 Ребенок ${i+1}: <b>${c.gender}</b> (Глаза: <span style="color: #38bdf8;">${c.eyes}</span>, Hair: <span style="color: #fbbf24;">${c.hair}</span>)</div>`).join('')}
         </div>`;
     }
 
@@ -655,9 +656,14 @@ function renderUI() {
     });
 
     $('#repro-reset').on('click', function() {
-        const chatId = getCurrentChatId();
-        settings.chatPregnancyData[chatId] = Object.assign({}, DEFAULT_BODY_DATA);
-        saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.info(getText('toastResetAll'));
+        if (confirm("Вы уверены, что хотите полностью очистить данные этого чата?")) {
+            const chatId = getCurrentChatId();
+            settings.chatPregnancyData[chatId] = createDefaultBodyData();
+            saveSettingsDebounced(); 
+            renderUI(); 
+            updatePromptInjection(); 
+            toastr.warning(getText('toastResetAll'));
+        }
     });
 }
 
@@ -687,7 +693,10 @@ jQuery(async () => {
         updatePromptInjection();
     });
 
+    // НАДЕЖНЫЙ ПЕРЕХВАТ СМЕНЫ ПЕРСОНАЖА / ЧАТА
     if (event_types.CHAT_CHANGED) {
-        eventSource.on(event_types.CHAT_CHANGED, () => { renderUI(); updatePromptInjection(); });
+        eventSource.on(event_types.CHAT_CHANGED, () => { 
+            loadSettings(); // Полностью перезагружаем базу данных под новый Chat ID
+        });
     }
 });
