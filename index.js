@@ -11,9 +11,9 @@ const EXTENSION_NAME = 'st-advanced-reproductive-system';
 
 const DEFAULT_SETTINGS = {
     isEnabled: true,
-    mode: 'realism',       // 'realism' или 'omegaverse'
-    gender: 'female',      // 'female', 'female_omega', 'male_omega'
-    aiAwareness: 'dynamic', // 'dynamic' (УЗИ на 20 нед), 'hidden' (Слепой/Средневековье), 'full' (Знает всё)
+    mode: 'realism',       
+    gender: 'female',      
+    aiAwareness: 'dynamic', 
     cycleLength: 28,
     periodDuration: 5,
     chatPregnancyData: {}  
@@ -30,7 +30,7 @@ const DEFAULT_BODY_DATA = {
 };
 
 let settings = Object.assign({}, DEFAULT_SETTINGS);
-let isMenuCollapsed = false; // Глобальный триггер для сворачивания меню
+let isMenuCollapsed = true; // По умолчанию делаем свернутым для компактности
 
 const MONTHS_RU = {
     'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3, 'мая': 4, 'июня': 5,
@@ -248,116 +248,117 @@ function renderUI() {
     const isRealism = settings.mode === 'realism';
     const statusLabel = isRealism ? 'Текущая фаза:' : 'Текущее состояние омеги:';
 
+    // Используем нативную разметку Drawer из ядра SillyTavern
     const html = `
-        <div class="repro-tracker-v2">
-            <!-- КЛИКАБЕЛЬНЫЙ ХЕДЕР ДЛЯ СВОРАЧИВАНИЯ -->
-            <div class="repro-header">
-                <span>🧬 Система Репродукции V2</span>
-                <span id="repro-toggle-arrow" class="repro-arrow">${isMenuCollapsed ? '▼' : '▲'}</span>
+        <div class="inline-drawer-toggle repro-header-click">
+            <span class="inline-drawer-title" style="color: #f472b6; font-weight: 600;">🧬 Система Репродукции V2</span>
+            <div id="repro-toggle-arrow" class="inline-drawer-icon fa-solid ${isMenuCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'}"></div>
+        </div>
+        
+        <div id="repro-content-wrapper" class="inline-drawer-content" style="${isMenuCollapsed ? 'display: none;' : 'display: block;'} padding: 12px 14px;">
+            <div class="repro-row">
+                <label>Режим симуляции:</label>
+                <select id="repro-mode" class="repro-dropdown">
+                    <option value="realism" ${settings.mode === 'realism' ? 'selected' : ''}>Реализм (Анатомия)</option>
+                    <option value="omegaverse" ${settings.mode === 'omegaverse' ? 'selected' : ''}>ОмегаВерс</option>
+                </select>
             </div>
-            
-            <!-- ОБЕРТКА ВСЕГО ТЕЛА НАСТРОЕК -->
-            <div id="repro-content-wrapper" style="${isMenuCollapsed ? 'display: none;' : ''}">
-                <div class="repro-row">
-                    <label>Режим симуляции:</label>
-                    <select id="repro-mode" class="repro-dropdown">
-                        <option value="realism" ${settings.mode === 'realism' ? 'selected' : ''}>Реализм (Анатомия)</option>
-                        <option value="omegaverse" ${settings.mode === 'omegaverse' ? 'selected' : ''}>ОмегаВерс</option>
-                    </select>
-                </div>
 
-                <div class="repro-row">
-                    <label>Биология {{user}}:</label>
-                    <select id="repro-gender" class="repro-dropdown">
-                        <option value="female" ${settings.gender === 'female' ? 'selected' : ''}>Женщина (Стандарт)</option>
-                        <option value="female_omega" ${settings.gender === 'female_omega' ? 'selected' : ''}>Женщина-Омега</option>
-                        <option value="male_omega" ${settings.gender === 'male_omega' ? 'selected' : ''}>Мужчина-Омега</option>
-                    </select>
-                </div>
+            <div class="repro-row">
+                <label>Биология {{user}}:</label>
+                <select id="repro-gender" class="repro-dropdown">
+                    <option value="female" ${settings.gender === 'female' ? 'selected' : ''}>Женщина (Стандарт)</option>
+                    <option value="female_omega" ${settings.gender === 'female_omega' ? 'selected' : ''}>Женщина-Омега</option>
+                    <option value="male_omega" ${settings.gender === 'male_omega' ? 'selected' : ''}>Мужчина-Омега</option>
+                </select>
+            </div>
 
-                <div class="repro-row">
-                    <label>Осведомлённость ИИ:</label>
-                    <select id="repro-awareness" class="repro-dropdown">
-                        <option value="dynamic" ${settings.aiAwareness === 'dynamic' ? 'selected' : ''}>Реалистично (УЗИ на 20 нед.)</option>
-                        <option value="hidden" ${settings.aiAwareness === 'hidden' ? 'selected' : ''}>Слепой режим (Средневековье)</option>
-                        <option value="full" ${settings.aiAwareness === 'full' ? 'selected' : ''}>ИИ знает всё сразу</option>
-                    </select>
-                </div>
+            <div class="repro-row">
+                <label>Осведомлённость ИИ:</label>
+                <select id="repro-awareness" class="repro-dropdown">
+                    <option value="dynamic" ${settings.aiAwareness === 'dynamic' ? 'selected' : ''}>Реалистично (УЗИ на 20 нед.)</option>
+                    <option value="hidden" ${settings.aiAwareness === 'hidden' ? 'selected' : ''}>Слепой режим (Средневековье)</option>
+                    <option value="full" ${settings.aiAwareness === 'full' ? 'selected' : ''}>ИИ знает всё сразу</option>
+                </select>
+            </div>
 
-                <div class="repro-card-status">
-                    <div class="repro-status-item"><strong>${statusLabel}</strong> <span class="badge-phase">${getBodyPhase()}</span></div>
-                    ${data.isPregnant ? `
-                        <div class="repro-status-item"><strong>Срок в RP:</strong> ${data.pregnancyWeeks} нед. ${data.pregnancyDays} дн.</div>
-                        <div class="repro-status-item" style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #f472b6;">
-                            ℹ️ <em>Тебе видно (ИИ скрыто):</em><br>
-                            • Количество: <b>${data.babiesCount}</b><br>
-                            • Пол: <b>${data.babiesGenders.join(', ')}</b>
-                        </div>
-                    ` : `
-                        <div class="repro-status-item"><strong>Текущий день:</strong> ${data.cycleDay} из ${settings.cycleLength} дней</div>
-                    `}
-                    <div class="repro-sync-date">📅 Последняя RP дата: ${data.lastRpDate ? data.lastRpDate : 'Не синхронизировано'}</div>
-                </div>
-
-                <div class="repro-sub-header">Настройки параметров</div>
-                <div class="repro-row">
-                    <label>Длина всего цикла:</label>
-                    <input type="number" id="repro-input-cycle" class="repro-input" value="${settings.cycleLength}"/>
-                </div>
+            <div class="repro-card-status">
+                <div class="repro-status-item"><strong>${statusLabel}</strong> <span class="badge-phase">${getBodyPhase()}</span></div>
                 ${data.isPregnant ? `
-                    <div class="repro-row">
-                        <label>Изменить неделю:</label>
-                        <input type="number" id="repro-input-weeks" class="repro-input" value="${data.pregnancyWeeks}"/>
+                    <div class="repro-status-item"><strong>Срок в RP:</strong> ${data.pregnancyWeeks} нед. ${data.pregnancyDays} дн.</div>
+                    <div class="repro-status-item" style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #f472b6;">
+                        ℹ️ <em>Тебе видно (ИИ скрыто):</em><br>
+                        • Количество: <b>${data.babiesCount}</b><br>
+                        • Пол: <b>${data.babiesGenders.join(', ')}</b>
                     </div>
                 ` : `
-                    <div class="repro-row">
-                        <label>Изменить текущий день:</label>
-                        <input type="number" id="repro-input-day" class="repro-input" value="${data.cycleDay}"/>
-                    </div>
+                    <div class="repro-status-item"><strong>Текущий день:</strong> ${data.cycleDay} из ${settings.cycleLength} дней</div>
                 `}
-
-                <button id="repro-apply-params" class="repro-btn-primary">▶ Применить изменения</button>
-
-                ${!data.isPregnant ? `
-                    <div class="repro-manual-box">
-                        <div class="repro-sub-header" style="color: #f472b6; margin-top: 0;">Инициализировать беременность</div>
-                        <div class="repro-row">
-                            <label>Срок (в неделях):</label>
-                            <input type="number" id="repro-manual-weeks" class="repro-input" value="4" min="0" max="40"/>
-                        </div>
-                        <div class="repro-row">
-                            <label>Количество детей:</label>
-                            <input type="number" id="repro-manual-count" class="repro-input" value="1" min="1" max="3"/>
-                        </div>
-                        <button id="repro-btn-manual-preg" class="repro-btn-pink">🤰 Установить беременность</button>
-                    </div>
-                ` : ''}
-
-                <!-- НОВАЯ КНОПКА: СБРОСИТЬ ТОЛЬКО БЕРЕМЕННОСТЬ -->
-                ${data.isPregnant ? `
-                    <button id="repro-reset-pregnancy-only" class="repro-btn-warning">🚼 Сбросить только беременность</button>
-                ` : ''}
-
-                <button id="repro-reset" class="repro-btn-danger">Полный сброс трекера чата</button>
+                <div class="repro-sync-date">📅 Последняя RP дата: ${data.lastRpDate ? data.lastRpDate : 'Не синхронизировано'}</div>
             </div>
+
+            <div class="repro-sub-header">Настройки параметров</div>
+            <div class="repro-row">
+                <label>Длина всего цикла:</label>
+                <input type="number" id="repro-input-cycle" class="repro-input" value="${settings.cycleLength}"/>
+            </div>
+            ${data.isPregnant ? `
+                <div class="repro-row">
+                    <label>Изменить неделю:</label>
+                    <input type="number" id="repro-input-weeks" class="repro-input" value="${data.pregnancyWeeks}"/>
+                </div>
+            ` : `
+                <div class="repro-row">
+                    <label>Изменить текущий день:</label>
+                    <input type="number" id="repro-input-day" class="repro-input" value="${data.cycleDay}"/>
+                </div>
+            `}
+
+            <button id="repro-apply-params" class="repro-btn-primary">▶ Применить изменения</button>
+
+            ${!data.isPregnant ? `
+                <div class="repro-manual-box">
+                    <div class="repro-sub-header" style="color: #f472b6; margin-top: 0;">Инициализировать беременность</div>
+                    <div class="repro-row">
+                        <label>Срок (в неделях):</label>
+                        <input type="number" id="repro-manual-weeks" class="repro-input" value="4" min="0" max="40"/>
+                    </div>
+                    <div class="repro-row">
+                        <label>Количество детей:</label>
+                        <input type="number" id="repro-manual-count" class="repro-input" value="1" min="1" max="3"/>
+                    </div>
+                    <button id="repro-btn-manual-preg" class="repro-btn-pink">🤰 Установить беременность</button>
+                </div>
+            ` : ''}
+
+            ${data.isPregnant ? `
+                <button id="repro-reset-pregnancy-only" class="repro-btn-warning">🚼 Сбросить только беременность</button>
+            ` : ''}
+
+            <button id="repro-reset" class="repro-btn-danger">Полный сброс трекера чата</button>
         </div>
     `;
 
+    // Привязываем корневой контейнер к нативному классу .inline-drawer ядра ST
     let container = $('#repro-system-extension-container');
     if (container.length === 0) {
-        container = $('<div id="repro-system-extension-container"></div>');
+        container = $('<div id="repro-system-extension-container" class="inline-drawer"></div>');
         $('#extensions_settings').append(container);
     }
     container.html(html);
 
-    // Логика переключения состояния сворачивания по клику на заголовок
-    $('.repro-header').off('click').on('click', function() {
+    // Логика переключения
+    $('.repro-header-click').off('click').on('click', function() {
         isMenuCollapsed = !isMenuCollapsed;
-        $('#repro-content-wrapper').slideToggle(200);
-        $('#repro-toggle-arrow').text(isMenuCollapsed ? '▼' : '▲');
+        $('#repro-content-wrapper').slideToggle(150);
+        const arrow = $('#repro-toggle-arrow');
+        if (isMenuCollapsed) {
+            arrow.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+        } else {
+            arrow.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+        }
     });
 
-    // Слушатели изменений параметров
     $('#repro-mode').on('change', function() {
         settings.mode = $(this).val();
         saveSettingsDebounced();
@@ -417,10 +418,8 @@ function renderUI() {
         toastr.success(`Беременность успешно задана вручную! Срок: ${weeks} недель.`);
     });
 
-    // Обработчик точечного сброса беременности
     $('#repro-reset-pregnancy-only').on('click', function() {
         const bodyData = getChatBodyData();
-        
         bodyData.isPregnant = false;
         bodyData.pregnancyWeeks = 0;
         bodyData.pregnancyDays = 0;
@@ -430,7 +429,7 @@ function renderUI() {
         saveSettingsDebounced();
         renderUI();
         updatePromptInjection();
-        toastr.info('Беременность сброшена. Цикл восстановлен, остальные логи сохранены[cite: 1, 9]!');
+        toastr.info('Беременность сброшена. Цикл восстановлен!');
     });
 
     $('#repro-reset').on('click', function() {
@@ -443,11 +442,13 @@ function renderUI() {
     });
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-    loadSettings();
-});
-
 jQuery(async () => {
+    // Внедряем динамический Cache-Buster (штамп времени), ломающий старый мобильный кэш при перезагрузке
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `/extensions/st-advanced-reproductive-system/style.css?v=${Date.now()}`;
+    document.head.appendChild(link);
+
     loadSettings();
 
     eventSource.on(event_types.MESSAGE_RECEIVED, async (messageIndex) => {
