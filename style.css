@@ -109,3 +109,27 @@
 .repro-btn-primary:hover {
     background: #0369a1;
 }
+.repro-manual-box {
+    background: rgba(244, 114, 182, 0.05);
+    border: 1px dashed rgba(244, 114, 182, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 15px 0 10px 0;
+}
+
+.repro-btn-pink {
+    background: #db2777;
+    color: #ffffff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    width: 100%;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.2s;
+}
+
+.repro-btn-pink:hover {
+    background: #be185d;
+}
