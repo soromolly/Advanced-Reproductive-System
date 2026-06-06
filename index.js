@@ -317,7 +317,6 @@ function renderUI() {
 
             <div style="font-size: 0.85em; font-weight: 700; color: var(--text_accent, #38bdf8); margin: 12px 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Параметры</div>
             
-            <!-- НОВОЕ ПОЛЕ: РУЧНОЙ ВЫБОР ТЕКУЩЕЙ RP-ДАТЫ -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <label style="font-size: 0.9em; opacity: 0.85;">RP Дата:</label>
                 <input type="date" id="repro-input-rpdate" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${data.lastRpDate || ''}"/>
@@ -410,7 +409,6 @@ function renderUI() {
         const bodyData = getChatBodyData();
         settings.cycleLength = parseInt($('#repro-input-cycle').val()) || 28;
         
-        // Считываем дату из календаря
         const manualDateVal = $('#repro-input-rpdate').val();
         if (manualDateVal) {
             bodyData.lastRpDate = manualDateVal;
@@ -450,7 +448,6 @@ function renderUI() {
         toastr.success(`Беременность установлена вручную: ${weeks} нед.`);
     });
 
-    // Изменение логики точечного сброса
     $('#repro-reset-pregnancy-only').on('click', function() {
         const bodyData = getChatBodyData();
         bodyData.isPregnant = false;
@@ -478,6 +475,24 @@ function renderUI() {
 jQuery(async () => {
     loadSettings();
 
+    // ХУК НА ОТПРАВКУ ТВОЕГО СООБЩЕНИЯ (Мгновенный пре-генерационный перехват)
+    eventSource.on(event_types.MESSAGE_SENT, async (messageIndex) => {
+        const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
+        const chat = context ? context.chat : window.chat;
+        if (!chat || !chat[messageIndex]) return;
+
+        const text = chat[messageIndex].mes;
+        if (!text) return;
+
+        // Если ты сама написала новую дату в посте — перехватываем её до отправки запроса в LLM
+        handleTimeProgression(text);
+        checkConceptionTrigger(text);
+        
+        // Насильно форсируем обновление кэша скрытых промптов Таверны
+        updatePromptInjection();
+    });
+
+    // ХУК НА ПОЛУЧЕНИЕ ОТВЕТА БОТА
     eventSource.on(event_types.MESSAGE_RECEIVED, async (messageIndex) => {
         const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
         const chat = context ? context.chat : window.chat;
