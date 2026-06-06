@@ -5,7 +5,7 @@ import {
     event_types,
     setExtensionPrompt,
     extension_prompt_types
-} from '../../../../script.js';
+} from '../../../script.js';
 
 const EXTENSION_NAME = 'st-advanced-reproductive-system';
 
@@ -172,6 +172,7 @@ function checkConceptionTrigger(text) {
     }
 }
 
+// Старт беременности и рандомизация плодов
 function triggerPregnancy(data) {
     data.isPregnant = true;
     data.pregnancyWeeks = 0;
@@ -200,7 +201,6 @@ function triggerPregnancy(data) {
     toastr.success(`🚨 ЗАЧАТИЕ ПРОИЗОШЛО! Успешная имплантация в матке.`);
 }
 
-// УМНАЯ ИНЖЕКЦИЯ ПРОМПТА С ДЕФЕНСОМ ОТ МЕТА-ГЕЙМИНГА
 function updatePromptInjection() {
     if (!settings.isEnabled) {
         setExtensionPrompt(EXTENSION_NAME, '', extension_prompt_types.IN_CHAT, 0);
@@ -216,7 +216,6 @@ function updatePromptInjection() {
     if (data.isPregnant) {
         prompt += `Status: PREGNANT | Duration: ${data.pregnancyWeeks} weeks and ${data.pregnancyDays} days.\n`;
         
-        // Логика сокрытия информации от ИИ
         let revealToAI = false;
         if (settings.aiAwareness === 'full') {
             revealToAI = true;
@@ -225,10 +224,8 @@ function updatePromptInjection() {
         }
 
         if (revealToAI) {
-            // ИИ видит точные параметры (поздний срок или включен полный доступ)
             prompt += `Womb Content Details (Determined): ${data.babiesCount} baby(ies), Gender/Sex: ${data.babiesGenders.join(', ')}.\n`;
         } else {
-            // Строгая заглушка для ранних сроков или средневекового сеттинга
             prompt += `Womb Content Details: [HIDDEN DATA]. The exact number of fetuses and their biological sex are absolutely UNKNOWN to anyone (No modern ultrasound or magic exists, or the term is too early).\n`;
             prompt += `CRITICAL DIRECTIVE FOR {{char}}: Do NOT mention, assume, guess, or reference the baby's sex or whether there are twins/multiples. Treating the pregnancy as an unpredictable mystery is mandatory. Avoid meta-gaming.\n`;
         }
@@ -244,6 +241,7 @@ function updatePromptInjection() {
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
 }
 
+// Безопасный рендеринг без затирания чужих расширений
 function renderUI() {
     const data = getChatBodyData();
     const isRealism = settings.mode === 'realism';
@@ -270,7 +268,6 @@ function renderUI() {
                 </select>
             </div>
 
-            <!-- НОВЫЙ ПУНКТ КОНФИДЕНЦИАЛЬНОСТИ -->
             <div class="repro-row">
                 <label>Осведомлённость ИИ:</label>
                 <select id="repro-awareness" class="repro-dropdown">
@@ -316,7 +313,13 @@ function renderUI() {
         </div>
     `;
 
-    $('#extensions_settings').formhtml(html);
+    // Создаем изолированный контейнер для нашей разметки, чтобы не ломать чужие плагины
+    let container = $('#repro-system-extension-container');
+    if (container.length === 0) {
+        container = $('<div id="repro-system-extension-container"></div>');
+        $('#extensions_settings').append(container);
+    }
+    container.html(html);
 
     // Слушатели изменений UI
     $('#repro-mode').on('change', function() {
@@ -333,7 +336,6 @@ function renderUI() {
         updatePromptInjection();
     });
 
-    // Слушатель для нового селектора
     $('#repro-awareness').on('change', function() {
         settings.aiAwareness = $(this).val();
         saveSettingsDebounced();
@@ -369,18 +371,18 @@ function renderUI() {
 }
 
 jQuery(async () => {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = '/extensions/st-advanced-reproductive-system/style.css';
-    document.head.appendChild(link);
-
     loadSettings();
 
+    // Перехват входящих сообщений ИИ через официальный контекст ST
     eventSource.on(event_types.MESSAGE_RECEIVED, async (messageIndex) => {
-        const chat = modules.chat.getChat();
+        const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
+        const chat = context ? context.chat : window.chat;
+        
         if (!chat || !chat[messageIndex]) return;
 
-        const text = chat[messageIndex].text;
+        // В SillyTavern текст сообщения лежит строго в свойстве .mes
+        const text = chat[messageIndex].mes;
+        if (!text) return;
 
         handleTimeProgression(text);
         checkConceptionTrigger(text);
