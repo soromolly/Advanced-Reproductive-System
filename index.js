@@ -5,7 +5,7 @@ import {
     event_types,
     setExtensionPrompt,
     extension_prompt_types
-} from '../../../script.js';
+} from '../../../../script.js';
 
 const EXTENSION_NAME = 'st-advanced-reproductive-system';
 
@@ -172,7 +172,6 @@ function checkConceptionTrigger(text) {
     }
 }
 
-// Старт беременности и рандомизация плодов
 function triggerPregnancy(data) {
     data.isPregnant = true;
     data.pregnancyWeeks = 0;
@@ -241,7 +240,6 @@ function updatePromptInjection() {
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
 }
 
-// Безопасный рендеринг без затирания чужих расширений
 function renderUI() {
     const data = getChatBodyData();
     const isRealism = settings.mode === 'realism';
@@ -313,7 +311,6 @@ function renderUI() {
         </div>
     `;
 
-    // Создаем изолированный контейнер для нашей разметки, чтобы не ломать чужие плагины
     let container = $('#repro-system-extension-container');
     if (container.length === 0) {
         container = $('<div id="repro-system-extension-container"></div>');
@@ -373,14 +370,12 @@ function renderUI() {
 jQuery(async () => {
     loadSettings();
 
-    // Перехват входящих сообщений ИИ через официальный контекст ST
     eventSource.on(event_types.MESSAGE_RECEIVED, async (messageIndex) => {
         const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
         const chat = context ? context.chat : window.chat;
         
         if (!chat || !chat[messageIndex]) return;
 
-        // В SillyTavern текст сообщения лежит строго в свойстве .mes
         const text = chat[messageIndex].mes;
         if (!text) return;
 
