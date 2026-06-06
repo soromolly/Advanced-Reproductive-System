@@ -309,6 +309,8 @@ function renderUI() {
                 </div>
             `}
 
+            <!-- КНОПКА ПОДТВЕРЖДЕНИЯ ИЗМЕНЕНИЙ -->
+            <button id="repro-apply-params" class="repro-btn-primary">▶ Применить изменения</button>
             <button id="repro-reset" class="repro-btn-danger">Полный сброс трекера чата</button>
         </div>
     `;
@@ -342,21 +344,23 @@ function renderUI() {
         updatePromptInjection();
     });
 
-    $('#repro-input-cycle').on('input', function() {
-        settings.cycleLength = parseInt($(this).val()) || 28;
-        saveSettingsDebounced();
-    });
+    // Обработчик новой кнопки подтверждения параметров
+    $('#repro-apply-params').on('click', function() {
+        const bodyData = getChatBodyData();
+        
+        settings.cycleLength = parseInt($('#repro-input-cycle').val()) || 28;
+        
+        if (bodyData.isPregnant) {
+            bodyData.pregnancyWeeks = parseInt($('#repro-input-weeks').val()) || 0;
+            bodyData.pregnancyDays = 0; // Сбрасываем дни внутри недели при ручной корректировке
+        } else {
+            bodyData.cycleDay = parseInt($('#repro-input-day').val()) || 1;
+        }
 
-    $('#repro-input-day').on('input', function() {
-        data.cycleDay = parseInt($(this).val()) || 1;
         saveSettingsDebounced();
+        renderUI();
         updatePromptInjection();
-    });
-
-    $('#repro-input-weeks').on('input', function() {
-        data.pregnancyWeeks = parseInt($(this).val()) || 0;
-        saveSettingsDebounced();
-        updatePromptInjection();
+        toastr.success('Параметры репродуктивной системы успешно обновлены!');
     });
 
     $('#repro-reset').on('click', function() {
