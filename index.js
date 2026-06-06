@@ -20,7 +20,6 @@ const DEFAULT_SETTINGS = {
     chatPregnancyData: {}  
 };
 
-// Функция-генератор ДЛЯ ПОЛНОЙ ИЗОЛЯЦИИ памяти каждого отдельного чата
 function createDefaultBodyData() {
     return {
         cycleDay: 1,
@@ -34,7 +33,10 @@ function createDefaultBodyData() {
         rolledTrimesters: { 1: false, 2: false, 3: false },
         activeComplication: null,
         postpartumDays: 0,
-        childrenList: [] 
+        childrenList: [],
+        
+        // По умолчанию в каждом новом чате защита отключена
+        contraception: 'none' 
     };
 }
 
@@ -75,7 +77,11 @@ const TRANSLATIONS = {
         symptomsTitle: '🎯 Симптомы организма:', fetusTitle: '👶 Развитие плода и тела:',
         complicationTitle: '⚠️ Медицинское осложнение:', cureBtn: '💊 Провести лечение / Облегчить симптом',
         postpartumPhase: 'Восстановление после родов 🩹', newbornTitle: '🍼 Рожденные дети в семье:',
-        giveBirthBtn: '🔔 ПРИНЯТЬ РОДЫ (Сюжетный триггер)'
+        giveBirthBtn: '🔔 ПРИНЯТЬ РОДЫ (Сюжетный триггер)',
+        
+        // Новые строки локализации контрацепции
+        protectionLabel: 'Контрацепция:', protectionNone: 'Без защиты', protectionCondom: 'Презерватив (Барьерный)',
+        protectionPills: 'Оральные контрацептивы (КОК)', protectionIud: 'Внутриматочная спираль (ВМС)'
     },
     en: {
         title: '🧬 Reproductive System V2',
@@ -102,7 +108,10 @@ const TRANSLATIONS = {
         symptomsTitle: '🎯 Body Symptoms:', fetusTitle: '👶 Fetus & Body Development:',
         complicationTitle: '⚠️ Medical Complication:', cureBtn: '💊 Treat / Alleviate Complication',
         postpartumPhase: 'Postpartum Recovery 🩹', newbornTitle: '🍼 Children in Family:',
-        giveBirthBtn: '🔔 GIVE BIRTH (Story Trigger)'
+        giveBirthBtn: '🔔 GIVE BIRTH (Story Trigger)',
+        
+        protectionLabel: 'Contraception:', protectionNone: 'No Protection', protectionCondom: 'Condom (Barrier)',
+        protectionPills: 'Oral Contraceptives (Pills)', protectionIud: 'Intrauterine Device (IUD)'
     }
 };
 
@@ -130,6 +139,7 @@ function getChatBodyData() {
     if (data.postpartumDays === undefined) data.postpartumDays = 0;
     if (!data.childrenList) data.childrenList = [];
     if (!data.rolledTrimesters) data.rolledTrimesters = { 1: false, 2: false, 3: false };
+    if (data.contraception === undefined) data.contraception = 'none'; 
     return data;
 }
 
@@ -299,6 +309,9 @@ function advanceBodyTime(days) {
     }
 }
 
+/**
+ * Расчет шансов с учетом контрацепции и фазы цикла
+ */
 function checkConceptionTrigger(text) {
     const data = getChatBodyData();
     if (data.isPregnant || data.postpartumDays > 0) return;
@@ -313,13 +326,34 @@ function checkConceptionTrigger(text) {
     let isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     let canConceive = false;
 
-    if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginal && hasEjaculationInside && isFertile) canConceive = true;
-    else if (settings.mode === 'omegaverse' && isFertile && hasEjaculationInside) {
+    if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginal && hasEjaculationInside) canConceive = true;
+    else if (settings.mode === 'omegaverse' && hasEjaculationInside) {
         if (settings.gender === 'female_omega' && hasVaginal) canConceive = true;
         else if (settings.gender === 'male_omega' && hasAnal) canConceive = true;
     }
 
-    if (canConceive && (Math.random() * 100 <= (settings.mode === 'omegaverse' ? 85 : 25))) triggerPregnancy(data);
+    if (canConceive) {
+        let finalChance = 0;
+
+        // Расчет шансов в зависимости от выбранного метода защиты
+        if (data.contraception === 'none') {
+            if (isFertile) {
+                finalChance = settings.mode === 'omegaverse' ? 85 : 25; // Пик
+            } else {
+                finalChance = settings.mode === 'omegaverse' ? 5 : 0.5; // "Безопасные" дни
+            }
+        } else if (data.contraception === 'condom') {
+            finalChance = 2; // Шанс, что порвется (Индекс Перля)
+        } else if (data.contraception === 'pills') {
+            finalChance = 0.1; // Гормональный блок таблеток
+        } else if (data.contraception === 'iud') {
+            finalChance = 0.2; // Эффективность спирали
+        }
+
+        if (Math.random() * 100 <= finalChance) {
+            triggerPregnancy(data);
+        }
+    }
 }
 
 function triggerPregnancy(data) {
@@ -376,11 +410,8 @@ function updatePromptInjection(isImmediateBirth = false) {
     
     if (isImmediateBirth) {
         const lastChildren = data.childrenList.slice(-data.childrenList.length);
-        prompt += `🚨 CRITICAL STORY EVENT: {{user}} is GIVING BIRTH right now in this exact scene!
-Directive for {{char}}: Describe the intense process of delivery and labor. 
-The outcome is already physically fixed by system data: {{user}} successfully delivers exactly ${lastChildren.length} baby(ies).
-Baby details to describe: ${lastChildren.map((c, i) => `Child #${i+1}: ${c.gender}, Eyes: ${c.eyes} color, Hair: ${c.hair} color`).join('; ')}.
-Acknowledge the baby's exact physical features in your response.\n`;
+        prompt += `🚨 CRITICAL STORY EVENT: {{user}} is GIVING BIRTH right now in this exact scene!\n`;
+        prompt += `Baby details to describe: ${lastChildren.map((c, i) => `Child #${i+1}: ${c.gender}, Eyes: ${c.eyes} color, Hair: ${c.hair} color`).join('; ')}.\n`;
         setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
         return;
     }
@@ -389,11 +420,6 @@ Acknowledge the baby's exact physical features in your response.\n`;
         const pData = getPostpartumData(data.postpartumDays);
         prompt += `Status: POSTPARTUM RECOVERY (Day ${data.postpartumDays}/40) | Phase: ${pData.name}\n`;
         prompt += `Physical Condition: ${pData.desc}\n`;
-        if (settings.mode === 'omegaverse') {
-            prompt += `🚨 OMEGA POSTPARTUM SCENT: The sharp pheromone of heat has completely faded. {{user}}'s body now continuously emits a soft, extremely sweet, warm 'milky' nesting scent. This scent deeply triggers {{char}}'s primal Alpha/Beta paternal instincts, causing heavy overprotectiveness, tenderness, and an urge to guard the nest and infant rather than sexual lust.\n`;
-        } else {
-            prompt += `Directive for {{char}}: Treat {{user}} as an exhausting, healing mother who requires absolute bedrest, care, and emotional safety. Act as an attentive partner.\n`;
-        }
         setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
         return;
     }
@@ -402,22 +428,15 @@ Acknowledge the baby's exact physical features in your response.\n`;
         prompt += `Status: PREGNANT | Duration: ${data.pregnancyWeeks} weeks.\n`;
         const fetus = getFetusData(data.pregnancyWeeks);
         prompt += `Fetus Size: ${fetus.size} | Maternal Body: ${fetus.belly}. ${fetus.desc}\n`;
-
-        if (data.activeComplication && data.activeComplication.isDiscovered) {
-            prompt += `🚨 ACTIVE MEDICAL COMPLICATION: ${data.activeComplication.name}. Symptoms: ${data.activeComplication.desc}\n`;
-        }
-        
-        let revealToAI = settings.aiAwareness === 'full' || (settings.aiAwareness === 'dynamic' && data.pregnancyWeeks >= 20);
-        if (revealToAI && settings.aiAwareness !== 'hidden') {
-            prompt += `Womb Content: ${data.babiesCount} baby(ies), Sex: ${data.babiesGenders.join(', ')}\n`;
-        } else {
-            prompt += `Womb Content Details: [HIDDEN DATA]. In 'Medieval/Blind' mode, the exact sex, count, or features of the baby are an absolute mystery. {{char}} MUST act completely oblivious to whether it's a boy or girl, or if there are twins. Avoid meta-gaming.\n`;
-        }
     } else {
         prompt += `Current Cycle Day: ${data.cycleDay}/${settings.cycleLength} | Phase: ${phase}\n`;
+        
+        // Инжектируем в ИИ метод контрацепции персонажа игрока, чтобы он мог это обыграть (например, покупку презервативов или прием таблеток)
+        if (data.contraception !== 'none') {
+            prompt += `Active Birth Control Method: ${data.contraception.toUpperCase()}. Note: Protection is actively used by {{user}} in this RP setting.\n`;
+        }
+
         if (data.currentSymptoms?.length > 0) prompt += `Current Physical Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
-        if (phase.includes('Течка') || phase.includes('Heat')) prompt += `🚨 DIRECTIVE: {{user}} is in OMEGA HEAT. Scent is potent and unignorable. Primal Alpha response required.\n`;
-        else if (phase.includes('Овуляция') || phase.includes('Ovulation')) prompt += `⚠️ DIRECTIVE: {{user}} is ovulating (hidden internal process). Act completely oblivious.\n`;
     }
 
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
@@ -471,7 +490,7 @@ function renderUI() {
     if (data.childrenList?.length > 0) {
         familyHtml = `<div style="margin: 10px 0; padding: 10px; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 6px; text-align: left; font-size: 0.85em;">
             <strong style="color: #f472b6; display: block; margin-bottom: 6px;">${getText('newbornTitle')}</strong>
-            ${data.childrenList.map((c, i) => `<div style="margin-bottom: 4px;">👶 Ребенок ${i+1}: <b>${c.gender}</b> (Глаза: <span style="color: #38bdf8;">${c.eyes}</span>, Hair: <span style="color: #fbbf24;">${c.hair}</span>)</div>`).join('')}
+            ${data.childrenList.map((c, i) => `<div style="margin-bottom: 4px;">👶 Ребенок ${i+1}: <b>${c.gender}</b> (Глаза: <span style="color: #38bdf8;">${c.eyes}</span>, Волосы: <span style="color: #fbbf24;">${c.hair}</span>)</div>`).join('')}
         </div>`;
     }
 
@@ -505,6 +524,17 @@ function renderUI() {
                     <option value="dynamic" ${settings.aiAwareness === 'dynamic' ? 'selected' : ''}>${getText('ultrasound')}</option>
                     <option value="hidden" ${settings.aiAwareness === 'hidden' ? 'selected' : ''}>${getText('medieval')}</option>
                     <option value="full" ${settings.aiAwareness === 'full' ? 'selected' : ''}>${getText('knowsAll')}</option>
+                </select>
+            </div>
+
+            <!-- ВСТАВКА ВЫПАДАЮЩЕГО СПИСКА КОНТРАЦЕПЦИИ (БЛОКИРУЕТСЯ ПРИ БЕРЕМЕННОСТИ / ПОСЛЕ РОДОВ) -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <label style="font-size: 0.9em; opacity: 0.85;">${getText('protectionLabel')}</label>
+                <select id="repro-contraception" ${data.isPregnant || data.postpartumDays > 0 ? 'disabled' : ''} style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none; opacity: ${data.isPregnant || data.postpartumDays > 0 ? '0.5' : '1'};">
+                    <option value="none" ${data.contraception === 'none' ? 'selected' : ''}>${getText('protectionNone')}</option>
+                    <option value="condom" ${data.contraception === 'condom' ? 'selected' : ''}>${getText('protectionCondom')}</option>
+                    <option value="pills" ${data.contraception === 'pills' ? 'selected' : ''}>${getText('protectionPills')}</option>
+                    <option value="iud" ${data.contraception === 'iud' ? 'selected' : ''}>${getText('protectionIud')}</option>
                 </select>
             </div>
 
@@ -594,6 +624,13 @@ function renderUI() {
         $('#extensions_settings').append(container);
     }
     container.html(html);
+
+    // Слушатель изменения выпадающего списка контрацепции
+    $('#repro-contraception').off('change').on('change', function() {
+        data.contraception = $(this).val();
+        saveSettingsDebounced();
+        updatePromptInjection();
+    });
 
     $('#repro-btn-birth-trigger').off('click').on('click', function() {
         if (confirm("Вы хотите запустить событие родов прямо сейчас в чате?")) { processBirthTrigger(); }
@@ -693,10 +730,10 @@ jQuery(async () => {
         updatePromptInjection();
     });
 
-    // НАДЕЖНЫЙ ПЕРЕХВАТ СМЕНЫ ПЕРСОНАЖА / ЧАТА
     if (event_types.CHAT_CHANGED) {
         eventSource.on(event_types.CHAT_CHANGED, () => { 
-            loadSettings(); // Полностью перезагружаем базу данных под новый Chat ID
+            loadSettings(); 
         });
     }
 });
+
