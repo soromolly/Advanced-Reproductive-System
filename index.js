@@ -32,16 +32,137 @@ const DEFAULT_BODY_DATA = {
 let settings = Object.assign({}, DEFAULT_SETTINGS);
 let isMenuCollapsed = true; 
 
-// ОБЪЕДИНЕННЫЙ МУЛЬТИЯЗЫЧНЫЙ СЛОВАРЬ МЕСЯЦЕВ (RU / EN)
+// Словарь месяцев для парсинга логов (RU / EN)
 const MONTHS = {
-    // Русский лор
     'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3, 'мая': 4, 'июня': 5,
     'июля': 6, 'августа': 7, 'сентября': 8, 'октября': 9, 'ноября': 10, 'декабря': 11,
-    // Английский лор (полный и сокращенный)
     'january': 0, 'february': 1, 'march': 2, 'april': 3, 'may': 4, 'june': 5,
     'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11,
     'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'jun': 5, 'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
 };
+
+// БАЗА ДАННЫХ ЛОКАЛИЗАЦИИ ИНТЕРФЕЙСА (СНГ / МИР)
+const TRANSLATIONS = {
+    ru: {
+        title: '🧬 Система Репродукции V2',
+        system: 'Система:',
+        realism: 'Реализм',
+        omegaverse: 'ОмегаВерс',
+        physiology: 'Физиология:',
+        female: 'Женщина',
+        female_omega: 'Ж-Омега',
+        male_omega: 'М-Омега',
+        aiLogic: 'Логика ИИ:',
+        ultrasound: 'УЗИ (20 нед)',
+        medieval: 'Средневековье',
+        knowsAll: 'Знает всё',
+        phaseRealism: 'Текущая фаза:',
+        phaseOmega: 'Текущее состояние омеги:',
+        termInRp: 'Срок в RP:',
+        weeksShort: 'нед.',
+        daysShort: 'дн.',
+        wombMap: 'Карта плода:',
+        babiesCount: 'Детей:',
+        babiesSex: 'Пол:',
+        sync: 'Синхронизация:',
+        waitingDate: 'Ожидание даты',
+        paramsHeader: 'Параметры',
+        rpDateLabel: 'RP Дата:',
+        cycleLengthLabel: 'Цикл (дней):',
+        pregnancyWeekLabel: 'Неделя:',
+        cycleDayLabel: 'День цикла:',
+        applyBtn: '▶ Применить изменения',
+        initPregnancyHeader: 'Задать беременность',
+        manualWeeks: 'Срок (нед):',
+        manualCount: 'Плодов:',
+        startPregnancyBtn: '🤰 Начать беременность',
+        resetPregnancyBtn: '🚼 Сбросить беременность',
+        resetAllBtn: 'Полный сброс данных',
+        toastSaved: 'Параметры успешно сохранены!',
+        toastManualPreg: 'Беременность установлена вручную: ',
+        toastResetPreg: 'Беременность сброшена.',
+        toastResetAll: 'Данные чата полностью очищены.',
+        toastTimePassed: 'Репродуктивная система: В РП прошло дней: ',
+        toastConception: '🚨 ЗАЧАТИЕ ПРОИЗОШЛО! Успешная имплантация в матке.',
+        toastPregEnd: 'Срок беременности подошел к концу! Пора рожать.',
+        // Фазы цикла
+        pregnancy: 'Беременность 🤰',
+        pregnancyOmega: 'Беременность (Омега) 🤰',
+        menstruation: 'Менструация 🩸',
+        ovulation: 'Овуляция (Окно зачатия) ✨',
+        follicularLuteal: 'Фолликулярная/Лютеиновая фаза',
+        heat: 'Течка (Пик фертильности) 🔥',
+        quiescence: 'Период покоя'
+    },
+    en: {
+        title: '🧬 Reproductive System V2',
+        system: 'System:',
+        realism: 'Realism',
+        omegaverse: 'OmegaVerse',
+        physiology: 'Physiology:',
+        female: 'Female',
+        female_omega: 'F-Omega',
+        male_omega: 'M-Omega',
+        aiLogic: 'AI Awareness:',
+        ultrasound: 'Ultrasound (20 wk)',
+        medieval: 'Medieval (Blind)',
+        knowsAll: 'Knows Everything',
+        phaseRealism: 'Current Phase:',
+        phaseOmega: 'Current Omega Status:',
+        termInRp: 'Term in RP:',
+        weeksShort: 'wks',
+        daysShort: 'days',
+        wombMap: 'Womb Content:',
+        babiesCount: 'Babies:',
+        babiesSex: 'Sex:',
+        sync: 'Sychronized:',
+        waitingDate: 'Waiting for date',
+        paramsHeader: 'Parameters',
+        rpDateLabel: 'RP Date:',
+        cycleLengthLabel: 'Cycle (days):',
+        pregnancyWeekLabel: 'Week:',
+        cycleDayLabel: 'Cycle Day:',
+        applyBtn: '▶ Apply Changes',
+        initPregnancyHeader: 'Initialize Pregnancy',
+        manualWeeks: 'Term (wks):',
+        manualCount: 'Babies:',
+        startPregnancyBtn: '🤰 Start Pregnancy',
+        resetPregnancyBtn: '🚼 Reset Pregnancy Only',
+        resetAllBtn: 'Full Data Reset',
+        toastSaved: 'Parameters successfully saved!',
+        toastManualPreg: 'Pregnancy set manually: ',
+        toastResetPreg: 'Pregnancy has been reset.',
+        toastResetAll: 'Chat data fully cleared.',
+        toastTimePassed: 'Reproductive system: Days passed in RP: ',
+        toastConception: '🚨 CONCEPTION OCCURRED! Successful implantation in the womb.',
+        toastPregEnd: 'Pregnancy term has ended! Time to give birth.',
+        // Cycle phases
+        pregnancy: 'Pregnancy 🤰',
+        pregnancyOmega: 'Pregnancy (Omega) 🤰',
+        menstruation: 'Menstruation 🩸',
+        ovulation: 'Ovulation (Conception Window) ✨',
+        follicularLuteal: 'Follicular/Luteal Phase',
+        heat: 'Heat (Peak Fertility) 🔥',
+        quiescence: 'Quiescence Period'
+    }
+};
+
+// Функция определения языка СНГ / Мир
+function getLanguage() {
+    // Считываем язык из глобальных настроек SillyTavern i18n
+    const currentLang = (typeof window.i18n?.language === 'string') ? window.i18n.language.toLowerCase() : 'ru';
+    
+    // Список кодов языков стран СНГ
+    const sngLanguages = ['ru', 'uk', 'be', 'kk', 'uz', 'az', 'hy', 'tg', 'tk', 'ky'];
+    
+    return sngLanguages.includes(currentLang) ? 'ru' : 'en';
+}
+
+// Быстрый хелпер для получения строки перевода
+function getText(key) {
+    const lang = getLanguage();
+    return TRANSLATIONS[lang][key] || TRANSLATIONS['en'][key];
+}
 
 function getCurrentChatId() {
     if (typeof SillyTavern?.getContext === 'function') {
@@ -69,24 +190,22 @@ function loadSettings() {
 
 function getBodyPhase() {
     const data = getChatBodyData();
-    if (data.isPregnant) return settings.mode === 'realism' ? 'Беременность 🤰' : 'Беременность (Омега) 🤰';
+    if (data.isPregnant) return settings.mode === 'realism' ? getText('pregnancy') : getText('pregnancyOmega');
 
     const day = data.cycleDay;
     if (settings.mode === 'realism') {
-        if (day <= settings.periodDuration) return 'Менструация 🩸';
-        if (day >= 11 && day <= 16) return 'Овуляция (Окно зачатия) ✨';
-        return 'Фолликулярная/Лютеиновая фаза';
+        if (day <= settings.periodDuration) return getText('menstruation');
+        if (day >= 11 && day <= 16) return getText('ovulation');
+        return getText('follicularLuteal');
     } else {
-        if (day >= 12 && day <= 15) return 'Течка (Пик фертильности) 🔥';
-        return 'Период покоя';
+        if (day >= 12 && day <= 15) return getText('heat');
+        return getText('quiescence');
     }
 }
 
-// УМНЫЙ МУЛЬТИЯЗЫЧНЫЙ ПАРСЕР АБСОЛЮТНЫХ ДАТ
 function parseRpDateFromText(text) {
     if (!text) return null;
 
-    // 1. Формат: "14 ИЮЛЯ 2026" / "14 July 2026"
     const textRegex = /(\d{1,2})\s+([a-zA-Zа-яёА-ЯЁ]+)\s+(\d{4})/i;
     const textMatch = text.match(textRegex);
     if (textMatch) {
@@ -98,7 +217,6 @@ function parseRpDateFromText(text) {
         }
     }
 
-    // 2. Классический английский формат: "July 14, 2026"
     const enTextRegex = /([a-zA-Z]+)\s+(\d{1,2}),?\s+(\d{4})/i;
     const enTextMatch = text.match(enTextRegex);
     if (enTextMatch) {
@@ -110,7 +228,6 @@ function parseRpDateFromText(text) {
         }
     }
 
-    // 3. Цифровой формат: "06.06.2026" / "06/06/2026"
     const numRegex = /(\d{1,2})[\.\/](\d{1,2})[\.\/](\d{4})/;
     const numMatch = text.match(numRegex);
     if (numMatch) {
@@ -124,13 +241,10 @@ function parseRpDateFromText(text) {
     return null;
 }
 
-// МУЛЬТИЯЗЫЧНЫЙ ПАРСЕР ТАЙМСКИПОВ (RU / EN)
 function parseRelativeTimeFromText(text) {
-    // Русский паттерн
     const ruRegex = /прошло\s+(\d+)\s+(дне[йяа]|недел[ьия]|месяц[аев]|ле[тв]|год[аоу]?)/i;
     const ruMatch = text.match(ruRegex);
     
-    // Английский паттерн (Ловит: "passed 2 months", "3 weeks later", "5 days passed")
     const enRegex = /(?:passed\s+(\d+)\s+(day|week|month|year)s?|(\d+)\s+(day|week|month|year)s?\s+(?:passed|later))/i;
     const enMatch = text.match(enRegex);
 
@@ -149,7 +263,7 @@ function parseRelativeTimeFromText(text) {
             unit = enMatch[4].toLowerCase();
         }
     } else {
-        return null; // Ничего не найдено
+        return null; 
     }
 
     const data = getChatBodyData();
@@ -200,7 +314,7 @@ function handleTimeProgression(text) {
 
         if (daysPassed > 0) {
             advanceBodyTime(daysPassed);
-            toastr.info(`Репродуктивная система: В РП прошло дней: ${daysPassed}. Статус обновлен.`);
+            toastr.info(`${getText('toastTimePassed')}${daysPassed}.`);
         }
     }
 
@@ -221,7 +335,7 @@ function advanceBodyTime(days) {
         }
         const maxWeeks = settings.mode === 'omegaverse' ? 36 : 40;
         if (data.pregnancyWeeks >= maxWeeks) {
-            toastr.warning('Срок беременности подошел к концу! Пора рожать.');
+            toastr.warning(getText('toastPregEnd'));
         }
     } else {
         data.cycleDay += days;
@@ -238,13 +352,12 @@ function checkConceptionTrigger(text) {
     const lowerText = text.toLowerCase();
     const phase = getBodyPhase();
     
-    // Поддержка мультиязычных логов интимных действий (RU / EN)
     const hasVaginal = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vaginal|pussy/i.test(lowerText);
     const hasAnal = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|butt/i.test(lowerText);
     const hasOral = /орально|в рот|минет|oral|blowjob/i.test(lowerText);
     const hasEjaculationInside = /кончил внутрь|излил семя внутрь|эякуляция внутрь|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied/i.test(lowerText);
 
-    let isFertile = phase.includes('Овуляция') || phase.includes('Течка');
+    let isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     let canConceive = false;
 
     if (settings.mode === 'realism') {
@@ -286,15 +399,21 @@ function triggerPregnancy(data) {
     }
 
     data.babiesGenders = [];
+    const lang = getLanguage();
     for (let i = 0; i < data.babiesCount; i++) {
-        data.babiesGenders.push(Math.random() > 0.5 ? 'Мальчик ♂' : 'Девочка ♀');
+        const isBoy = Math.random() > 0.5;
+        if (lang === 'ru') {
+            data.babiesGenders.push(isBoy ? 'Мальчик ♂' : 'Девочка ♀');
+        } else {
+            data.babiesGenders.push(isBoy ? 'Boy ♂' : 'Girl ♀');
+        }
     }
 
     saveSettingsDebounced();
     renderUI();
     updatePromptInjection();
     
-    toastr.success(`🚨 ЗАЧАТИЕ ПРОИЗОШЛО! Успешная имплантация в матке.`);
+    toastr.success(getText('toastConception'));
 }
 
 function updatePromptInjection() {
@@ -330,9 +449,9 @@ function updatePromptInjection() {
     } else {
         prompt += `Current Cycle Day: ${data.cycleDay}/${settings.cycleLength} | Phase: ${phase}\n`;
         
-        if (phase.includes('Течка')) {
+        if (phase.includes('Течка') || phase.includes('Heat')) {
             prompt += `🚨 CRITICAL MANDATORY DIRECTIVE FOR {{char}}: {{user}} is currently in OMEGA HEAT (течка). Their body is involuntarily emitting an incredibly potent, sweet, sharp, and intoxicating Omega pheromone scent. This state is completely obvious, primal, and unignorable to anyone in the same room. {{char}} (and any surrounding Alphas/Betas) MUST immediately notice this scent, describe their instinctual physical reaction to it (pupil dilation, heavy breathing, sudden possessive/protective attraction, or primitive agitation), and acknowledge the heavy pheromonal atmosphere thick in the air.\n`;
-        } else if (phase.includes('Овуляция')) {
+        } else if (phase.includes('Овуляция') || phase.includes('Ovulation')) {
             prompt += `⚠️ STRICT CONTRA-INDICATION: {{user}} is currently ovulating. This is a purely internal, microscopic, scentless, and 100% invisible biological process. No one around them (including {{char}}) can sense, smell, or know this. {{char}} MUST act completely oblivious to {{user}}'s fertility status. Do NOT mention, hint, or react to ovulation in any way.\n`;
         }
     }
@@ -342,10 +461,9 @@ function updatePromptInjection() {
 
 function renderUI() {
     const data = getChatBodyData();
-    const isRealism = settings.mode === 'realism';
-    const statusLabel = isRealism ? 'Текущая фаза:' : 'Текущее состояние омеги:';
+    const lang = getLanguage();
 
-    let displayDate = 'Ожидание даты';
+    let displayDate = getText('waitingDate');
     if (data.lastRpDate) {
         const parts = data.lastRpDate.split('-');
         displayDate = `${parts[2]}.${parts[1]}.${parts[0]}`;
@@ -353,97 +471,97 @@ function renderUI() {
 
     const html = `
         <div class="repro-custom-btn-toggle" style="display: flex; justify-content: space-between; align-items: center; background: var(--input-bg, #1e1e2a); border: 1px solid var(--input-border, #334155); padding: 10px 14px; border-radius: ${isMenuCollapsed ? '10px' : '10px 10px 0 0'}; cursor: pointer; user-select: none; font-size: 14px; transition: background 0.15s;">
-            <span style="color: #f472b6 !important; font-weight: 600;">🧬 Система Репродукции V2</span>
-            <i id="repro-toggle-arrow" class="fa-solid ${isMenuCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'}" style="opacity: 0.6; font-size: 12px; margin-right: 4px;"></i>
+            <span style="color: #f472b6 !important; font-weight: 600;">${getText('title')}</span>
+            <div id="repro-toggle-arrow" class="inline-drawer-icon fa-solid ${isMenuCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'}" style="opacity: 0.6; font-size: 12px; margin-right: 4px;"></div>
         </div>
         
         <div id="repro-content-wrapper" style="${isMenuCollapsed ? 'display: none;' : 'display: block;'} background: rgba(0, 0, 0, 0.15); border: 1px solid var(--input-border, #334155); border-top: none; border-radius: 0 0 10px 10px; padding: 14px; box-sizing: border-box;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">Система:</label>
+                <label style="font-size: 0.9em; opacity: 0.85;">${getText('system')}</label>
                 <select id="repro-mode" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;">
-                    <option value="realism" ${settings.mode === 'realism' ? 'selected' : ''}>Реализм</option>
-                    <option value="omegaverse" ${settings.mode === 'omegaverse' ? 'selected' : ''}>ОмегаВерс</option>
+                    <option value="realism" ${settings.mode === 'realism' ? 'selected' : ''}>${getText('realism')}</option>
+                    <option value="omegaverse" ${settings.mode === 'omegaverse' ? 'selected' : ''}>${getText('omegaverse')}</option>
                 </select>
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">Физиология:</label>
+                <label style="font-size: 0.9em; opacity: 0.85;">${getText('physiology')}</label>
                 <select id="repro-gender" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;">
-                    <option value="female" ${settings.gender === 'female' ? 'selected' : ''}>Женщина</option>
-                    <option value="female_omega" ${settings.gender === 'female_omega' ? 'selected' : ''}>Ж-Омега</option>
-                    <option value="male_omega" ${settings.gender === 'male_omega' ? 'selected' : ''}>М-Омега</option>
+                    <option value="female" ${settings.gender === 'female' ? 'selected' : ''}>${getText('female')}</option>
+                    <option value="female_omega" ${settings.gender === 'female_omega' ? 'selected' : ''}>${getText('female_omega')}</option>
+                    <option value="male_omega" ${settings.gender === 'male_omega' ? 'selected' : ''}>${getText('male_omega')}</option>
                 </select>
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">Логика ИИ:</label>
+                <label style="font-size: 0.9em; opacity: 0.85;">${getText('aiLogic')}</label>
                 <select id="repro-awareness" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;">
-                    <option value="dynamic" ${settings.aiAwareness === 'dynamic' ? 'selected' : ''}>УЗИ (20 нед)</option>
-                    <option value="hidden" ${settings.aiAwareness === 'hidden' ? 'selected' : ''}>Средневековье</option>
-                    <option value="full" ${settings.aiAwareness === 'full' ? 'selected' : ''}>Знает всё</option>
+                    <option value="dynamic" ${settings.aiAwareness === 'dynamic' ? 'selected' : ''}>${getText('ultrasound')}</option>
+                    <option value="hidden" ${settings.aiAwareness === 'hidden' ? 'selected' : ''}>${getText('medieval')}</option>
+                    <option value="full" ${settings.aiAwareness === 'full' ? 'selected' : ''}>${getText('knowsAll')}</option>
                 </select>
             </div>
 
             <div style="background: rgba(0, 0, 0, 0.25); border-left: 3px solid #f472b6; border-radius: 4px; padding: 10px; margin: 12px 0; font-size: 0.9em; text-align: left;">
-                <div style="margin-bottom: 4px;"><strong>${statusLabel}</strong> <span style="color: #4ade80; font-weight: 700;">${getBodyPhase()}</span></div>
+                <div style="margin-bottom: 4px;"><strong>${settings.mode === 'realism' ? getText('phaseRealism') : getText('phaseOmega')}</strong> <span style="color: #4ade80; font-weight: 700;">${getBodyPhase()}</span></div>
                 ${data.isPregnant ? `
-                    <div style="margin-bottom: 4px;"><strong>Срок в RP:</strong> ${data.pregnancyWeeks} нед. ${data.pregnancyDays} дн.</div>
+                    <div style="margin-bottom: 4px;"><strong>${getText('termInRp')}</strong> ${data.pregnancyWeeks} ${getText('weeksShort')} ${data.pregnancyDays} ${getText('daysShort')}</div>
                     <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #f472b6;">
-                        ℹ️ <em>Карта плода:</em><br>
-                        • Детей: <b>${data.babiesCount}</b><br>
-                        • Пол: <b>${data.babiesGenders.join(', ')}</b>
+                        ℹ️ <em>${getText('wombMap')}</em><br>
+                        • ${getText('babiesCount')} <b>${data.babiesCount}</b><br>
+                        • ${getText('babiesSex')} <b>${data.babiesGenders.join(', ')}</b>
                     </div>
                 ` : `
-                    <div style="margin-bottom: 4px;"><strong>Текущий день:</strong> ${data.cycleDay} из ${settings.cycleLength} дней</div>
+                    <div style="margin-bottom: 4px;"><strong>${getText('cycleDayLabel')}</strong> ${data.cycleDay} из ${settings.cycleLength}</div>
                 `}
-                <div style="font-size: 0.85em; color: #64748b; margin-top: 6px;">📅 Синхронизация: ${displayDate}</div>
+                <div style="font-size: 0.85em; color: #64748b; margin-top: 6px;">📅 ${getText('sync')} ${displayDate}</div>
             </div>
 
-            <div style="font-size: 0.85em; font-weight: 700; color: var(--text_accent, #38bdf8); margin: 12px 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Параметры</div>
+            <div style="font-size: 0.85em; font-weight: 700; color: var(--text_accent, #38bdf8); margin: 12px 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">${getText('paramsHeader')}</div>
             
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">RP Дата:</label>
+                <label style="font-size: 0.9em; opacity: 0.85;">${getText('rpDateLabel')}</label>
                 <input type="date" id="repro-input-rpdate" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${data.lastRpDate || ''}"/>
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">Цикл (дней):</label>
+                <label style="font-size: 0.9em; opacity: 0.85;">${getText('cycleLengthLabel')}</label>
                 <input type="number" id="repro-input-cycle" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${settings.cycleLength}"/>
             </div>
             ${data.isPregnant ? `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <label style="font-size: 0.9em; opacity: 0.85;">Неделя:</label>
+                    <label style="font-size: 0.9em; opacity: 0.85;">${getText('pregnancyWeekLabel')}</label>
                     <input type="number" id="repro-input-weeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${data.pregnancyWeeks}"/>
                 </div>
             ` : `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <label style="font-size: 0.9em; opacity: 0.85;">День цикла:</label>
+                    <label style="font-size: 0.9em; opacity: 0.85;">${getText('cycleDayLabel')}</label>
                     <input type="number" id="repro-input-day" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${data.cycleDay}"/>
                 </div>
             `}
 
-            <button id="repro-apply-params" class="menu_button type_primary" style="width: 100%; margin-top: 10px; font-weight: 600;">▶ Применить изменения</button>
+            <button id="repro-apply-params" class="menu_button type_primary" style="width: 100%; margin-top: 10px; font-weight: 600;">${getText('applyBtn')}</button>
 
             ${!data.isPregnant ? `
                 <div style="background: rgba(244, 114, 182, 0.03); border: 1px dashed rgba(244, 114, 182, 0.2); border-radius: 8px; padding: 12px; margin: 14px 0 10px 0; text-align: left;">
-                    <div style="font-size: 0.85em; font-weight: 700; color: #f472b6; margin-bottom: 8px; text-transform: uppercase;">Задать беременность</div>
+                    <div style="font-size: 0.85em; font-weight: 700; color: #f472b6; margin-bottom: 8px; text-transform: uppercase;">${getText('initPregnancyHeader')}</div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <label style="font-size: 0.9em; opacity: 0.85;">Срок (нед):</label>
+                        <label style="font-size: 0.9em; opacity: 0.85;">${getText('manualWeeks')}</label>
                         <input type="number" id="repro-manual-weeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="4" min="0" max="40"/>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <label style="font-size: 0.9em; opacity: 0.85;">Плодов:</label>
+                        <label style="font-size: 0.9em; opacity: 0.85;">${getText('manualCount')}</label>
                         <input type="number" id="repro-manual-count" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="1" min="1" max="3"/>
                     </div>
-                    <button id="repro-btn-manual-preg" class="menu_button" style="width: 100%; background: #db2777; color: white; font-weight: 600;"> Начать беременность</button>
+                    <button id="repro-btn-manual-preg" class="menu_button" style="width: 100%; background: #db2777; color: white; font-weight: 600;">${getText('startPregnancyBtn')}</button>
                 </div>
             ` : ''}
 
             ${data.isPregnant ? `
-                <button id="repro-reset-pregnancy-only" class="menu_button type_warning" style="width: 100%; margin-top: 10px; font-weight: 600;">🚼 Сбросить беременность</button>
+                <button id="repro-reset-pregnancy-only" class="menu_button type_warning" style="width: 100%; margin-top: 10px; font-weight: 600;">${getText('resetPregnancyBtn')}</button>
             ` : ''}
 
-            <button id="repro-reset" class="menu_button type_danger" style="width: 100%; margin-top: 10px; font-weight: 600;">Полный сброс данных</button>
+            <button id="repro-reset" class="menu_button type_danger" style="width: 100%; margin-top: 10px; font-weight: 600;">${getText('resetAllBtn')}</button>
         </div>
     `;
 
@@ -508,7 +626,7 @@ function renderUI() {
         saveSettingsDebounced();
         renderUI();
         updatePromptInjection();
-        toastr.success('Параметры успешно сохранены!');
+        toastr.success(getText('toastSaved'));
     });
 
     $('#repro-btn-manual-preg').on('click', function() {
@@ -522,14 +640,20 @@ function renderUI() {
         bodyData.babiesCount = count;
 
         bodyData.babiesGenders = [];
+        const lang = getLanguage();
         for (let i = 0; i < count; i++) {
-            bodyData.babiesGenders.push(Math.random() > 0.5 ? 'Мальчик ♂' : 'Девочка ♀');
+            const isBoy = Math.random() > 0.5;
+            if (lang === 'ru') {
+                bodyData.babiesGenders.push(isBoy ? 'Мальчик ♂' : 'Девочка ♀');
+            } else {
+                bodyData.babiesGenders.push(isBoy ? 'Boy ♂' : 'Girl ♀');
+            }
         }
 
         saveSettingsDebounced();
         renderUI();
         updatePromptInjection();
-        toastr.success(`Беременность установлена вручную: ${weeks} нед.`);
+        toastr.success(`${getText('toastManualPreg')}${weeks}`);
     });
 
     $('#repro-reset-pregnancy-only').on('click', function() {
@@ -543,7 +667,7 @@ function renderUI() {
         saveSettingsDebounced();
         renderUI();
         updatePromptInjection();
-        toastr.info('Беременность сброшена.');
+        toastr.info(getText('toastResetPreg'));
     });
 
     $('#repro-reset').on('click', function() {
@@ -552,14 +676,13 @@ function renderUI() {
         saveSettingsDebounced();
         renderUI();
         updatePromptInjection();
-        toastr.info('Данные чата полностью очищены.');
+        toastr.info(getText('toastResetAll'));
     });
 }
 
 jQuery(async () => {
     loadSettings();
 
-    // ПЕРЕХВАТ ПРИ ОТПРАВКЕ СООБЩЕНИЯ (Мгновенный пре-генерационный расчёт)
     eventSource.on(event_types.MESSAGE_SENT, async (messageIndex) => {
         const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
         const chat = context ? context.chat : window.chat;
@@ -573,7 +696,6 @@ jQuery(async () => {
         updatePromptInjection();
     });
 
-    // ПЕРЕХВАТ ПРИ ПОЛУЧЕНИИ ОТВЕТА БОТА
     eventSource.on(event_types.MESSAGE_RECEIVED, async (messageIndex) => {
         const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
         const chat = context ? context.chat : window.chat;
