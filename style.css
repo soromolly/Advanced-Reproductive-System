@@ -1,27 +1,51 @@
 .repro-tracker-v2 {
-    background: rgba(25, 25, 35, 0.75);
+    background: rgba(0, 0, 0, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 16px;
+    border-radius: 10px; /* Идеальное нативное скругление */
+    padding: 0 !important; /* КРИТИЧЕСКИ: убираем внешние отступы */
+    margin-bottom: 8px;
     color: #e2e8f0;
-    font-family: 'Segoe UI', Roboto, sans-serif;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    font-family: inherit;
+    overflow: hidden; /* Прячет внутренности строго по контуру углов */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .repro-header {
-    font-size: 1.15em;
-    font-weight: 700;
-    color: #f472b6;
-    margin-bottom: 14px;
-    text-align: center;
-    letter-spacing: 0.5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    font-size: 14px;
+    font-weight: 600;
+    color: #f472b6; /* Твой красивый розовый акцент */
+    padding: 11px 14px; /* Точные пропорции нативных кнопок Таверны */
+    background: rgba(25, 25, 35, 0.3);
+    transition: background 0.15s ease-in-out;
+}
+
+.repro-header:hover {
+    background: rgba(25, 25, 35, 0.55);
+}
+
+.repro-arrow {
+    font-size: 0.85em;
+    color: #64748b;
+    margin-right: 4px;
+}
+
+/* Все отступы живут здесь и полностью исчезают при скрытии */
+#repro-content-wrapper {
+    padding: 14px;
+    background: rgba(15, 23, 42, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .repro-sub-header {
-    font-size: 0.9em;
-    font-weight: 600;
+    font-size: 0.85em;
+    font-weight: 700;
     color: #38bdf8;
-    margin: 14px 0 8px 0;
+    margin: 12px 0 8px 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -46,6 +70,7 @@
     border-radius: 6px;
     width: 55%;
     outline: none;
+    font-family: inherit;
     transition: border-color 0.2s;
 }
 
@@ -54,16 +79,16 @@
 }
 
 .repro-card-status {
-    background: rgba(15, 23, 42, 0.6);
-    border-left: 4px solid #f472b6;
-    border-radius: 6px;
-    padding: 12px;
-    margin: 14px 0;
+    background: rgba(15, 23, 42, 0.4);
+    border-left: 3px solid #f472b6;
+    border-radius: 4px;
+    padding: 10px;
+    margin: 12px 0;
 }
 
 .repro-status-item {
-    font-size: 0.95em;
-    margin-bottom: 6px;
+    font-size: 0.9em;
+    margin-bottom: 4px;
 }
 
 .badge-phase {
@@ -73,102 +98,40 @@
 
 .repro-sync-date {
     font-size: 0.8em;
-    color: #64748b;
-    margin-top: 4px;
+    color: #475569;
+    margin-top: 6px;
 }
 
-.repro-btn-danger {
-    background: #ef4444;
-    color: #ffffff;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 6px;
-    width: 100%;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 12px;
-    transition: background 0.2s;
-}
-
-.repro-btn-danger:hover {
-    background: #dc2626;
-}
-.repro-btn-primary {
-    background: #0284c7;
-    color: #ffffff;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 6px;
-    width: 100%;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 14px;
-    transition: background 0.2s;
-}
-
-.repro-btn-primary:hover {
-    background: #0369a1;
-}
 .repro-manual-box {
-    background: rgba(244, 114, 182, 0.05);
-    border: 1px dashed rgba(244, 114, 182, 0.3);
+    background: rgba(244, 114, 182, 0.03);
+    border: 1px dashed rgba(244, 114, 182, 0.2);
     border-radius: 8px;
     padding: 12px;
-    margin: 15px 0 10px 0;
+    margin: 14px 0 10px 0;
 }
 
-.repro-btn-pink {
-    background: #db2777;
+/* Кнопки */
+.repro-btn-primary, .repro-btn-pink, .repro-btn-warning, .repro-btn-danger {
     color: #ffffff;
     border: none;
-    padding: 8px 12px;
+    padding: 7px 12px;
     border-radius: 6px;
     width: 100%;
     font-weight: 600;
+    font-size: 0.9em;
     cursor: pointer;
-    margin-top: 8px;
-    transition: background 0.2s;
+    margin-top: 10px;
+    transition: background 0.15s;
 }
 
-.repro-btn-pink:hover {
-    background: #be185d;
-}
-.repro-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    user-select: none;
-    font-size: 1.15em;
-    font-weight: 700;
-    color: #f472b6;
-    margin-bottom: 14px;
-    letter-spacing: 0.5px;
-}
+.repro-btn-primary { background: #0284c7; }
+.repro-btn-primary:hover { background: #0369a1; }
 
-.repro-header:hover {
-    opacity: 0.85;
-}
+.repro-btn-pink { background: #db2777; }
+.repro-btn-pink:hover { background: #be185d; }
 
-.repro-arrow {
-    font-size: 0.85em;
-    color: #94a3b8;
-    transition: color 0.2s;
-}
+.repro-btn-warning { background: #b45309; }
+.repro-btn-warning:hover { background: #92400e; }
 
-.repro-btn-warning {
-    background: #d97706;
-    color: #ffffff;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 6px;
-    width: 100%;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 12px;
-    transition: background 0.2s;
-}
-
-.repro-btn-warning:hover {
-    background: #b45309;
-}
+.repro-btn-danger { background: #dc2626; }
+.repro-btn-danger:hover { background: #b91c1c; }
