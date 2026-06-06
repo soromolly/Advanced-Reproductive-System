@@ -6,8 +6,8 @@ import {
     extension_prompt_types
 } from '../../../../script.js';
 import { extension_settings } from '../../../extensions.js';
-// Импортируем генератор симптомов из соседнего файла symptoms.js
-import { getRandomSymptoms } from './symptoms.js';
+// Импортируем расширенную логику из symptoms.js
+import { getRandomSymptoms, getFetusData, rollComplication } from './symptoms.js';
 
 const EXTENSION_NAME = 'st-advanced-reproductive-system';
 
@@ -29,13 +29,16 @@ const DEFAULT_BODY_DATA = {
     pregnancyDays: 0,
     babiesCount: 0,
     babiesGenders: [],
-    currentSymptoms: [] // Храним выпавшие симптомы здесь
+    currentSymptoms: [],
+    
+    // Новые поля для долгосрочного отслеживания осложнений
+    rolledTrimesters: { 1: false, 2: false, 3: false },
+    activeComplication: null 
 };
 
 let settings = Object.assign({}, DEFAULT_SETTINGS);
 let isMenuCollapsed = true; 
 
-// ОБЪЕДИНЕННЫЙ МУЛЬТИЯЗЫЧНЫЙ СЛОВАРЬ МЕСЯЦЕВ (RU / EN)
 const MONTHS = {
     'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3, 'мая': 4, 'июня': 5,
     'июля': 6, 'августа': 7, 'сентября': 8, 'октября': 9, 'ноября': 10, 'декабря': 11,
@@ -44,7 +47,6 @@ const MONTHS = {
     'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'jun': 5, 'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
 };
 
-// БАЗА ДАННЫХ ЛОКАЛИЗАЦИИ ИНТЕРФЕЙСА (СНГ / МИР)
 const TRANSLATIONS = {
     ru: {
         title: '🧬 Система Репродукции V2',
@@ -95,7 +97,10 @@ const TRANSLATIONS = {
         follicularLuteal: 'Фолликулярная/Лютеиновая фаза',
         heat: 'Течка (Пик фертильности) 🔥',
         quiescence: 'Период покоя',
-        symptomsTitle: '🎯 Симптомы организма:'
+        symptomsTitle: '🎯 Симптомы организма:',
+        fetusTitle: '👶 Развитие плода и тела:',
+        complicationTitle: '⚠️ Медицинское осложнение:',
+        cureBtn: '💊 Провести лечение / Облегчить симптом'
     },
     en: {
         title: '🧬 Reproductive System V2',
@@ -146,7 +151,10 @@ const TRANSLATIONS = {
         follicularLuteal: 'Follicular/Luteal Phase',
         heat: 'Heat (Peak Fertility) 🔥',
         quiescence: 'Quiescence Period',
-        symptomsTitle: '🎯 Body Symptoms:'
+        symptomsTitle: '🎯 Body Symptoms:',
+        fetusTitle: '👶 Fetus & Body Development:',
+        complicationTitle: '⚠️ Medical Complication:',
+        cureBtn: '💊 Treat / Alleviate Complication'
     }
 };
 
@@ -173,6 +181,11 @@ function getChatBodyData() {
     if (!settings.chatPregnancyData[chatId]) {
         settings.chatPregnancyData[chatId] = Object.assign({}, DEFAULT_BODY_DATA);
     }
+    // Гарантируем наличие вложенных структур при обновлении со старых версий
+    if (!settings.chatPregnancyData[chatId].rolledTrimesters) {
+        settings.chatPregnancyData[chatId].rolledTrimesters = { 1: false, 2: false, 3: false };
+        settings.chatPregnancyData[chatId].activeComplication = null;
+    }
     return settings.chatPregnancyData[chatId];
 }
 
@@ -182,9 +195,9 @@ function loadSettings() {
     }
     settings = extension_settings[EXTENSION_NAME];
     
-    // Генерируем симптомы при первой загрузке
     const data = getChatBodyData();
     updateSymptomsData(data);
+    checkPregnancyComplications(data);
 
     renderUI();
     updatePromptInjection();
@@ -205,32 +218,53 @@ function getBodyPhase() {
     }
 }
 
-/**
- * Проверяет текущую фазу и наполняет массив случайными симптомами
- */
 function updateSymptomsData(data) {
     if (data.isPregnant) {
         data.currentSymptoms = [];
         return;
     }
 
-    // Если на сегодня симптомы уже выбраны — не трогаем их
     if (data.currentSymptoms && data.currentSymptoms.length > 0) return;
 
     const phase = getBodyPhase();
     let phaseKey = null;
 
-    if (phase === getText('menstruation')) {
-        phaseKey = 'menstruation';
-    } else if (phase === getText('ovulation') || phase === getText('heat')) {
-        phaseKey = 'ovulation';
-    }
+    if (phase === getText('menstruation')) phaseKey = 'menstruation';
+    else if (phase === getText('ovulation') || phase === getText('heat')) phaseKey = 'ovulation';
 
     if (phaseKey) {
-        // Достаем случайные симптомы (от 1 до 3 штук) из symptoms.js
         data.currentSymptoms = getRandomSymptoms(phaseKey, 3);
     } else {
-        data.currentSymptoms = []; // Нейтральные фазы остаются без симптомов
+        data.currentSymptoms = [];
+    }
+}
+
+/**
+ * Логика долгосрочного просчета осложнений беременности
+ */
+function checkPregnancyComplications(data) {
+    if (!data.isPregnant) return;
+
+    const currentWeek = data.pregnancyWeeks;
+    let currentTrimester = 1;
+    if (currentWeek >= 13 && currentWeek <= 26) currentTrimester = 2;
+    else if (currentWeek >= 27) currentTrimester = 3;
+
+    // 1. Проверяем, нужно ли сделать ролл осложнения для текущего триместра
+    if (!data.rolledTrimesters[currentTrimester] && !data.activeComplication) {
+        data.rolledTrimesters[currentTrimester] = true;
+        const rolled = rollComplication(currentTrimester);
+        if (rolled) {
+            data.activeComplication = rolled;
+        }
+    }
+
+    // 2. Активируем (делаем видимым) осложнение, если подошла его неделя по сюжету
+    if (data.activeComplication && !data.activeComplication.isDiscovered) {
+        if (currentWeek >= data.activeComplication.triggerWeek) {
+            data.activeComplication.isDiscovered = true;
+            toastr.error(`🚨 Осложнение беременности: Обнаружен «${data.activeComplication.name}»!`);
+        }
     }
 }
 
@@ -328,6 +362,7 @@ function handleTimeProgression(text) {
     const relativeDays = parseRelativeTimeFromText(text);
     if (relativeDays !== null && relativeDays > 0) {
         advanceBodyTime(relativeDays);
+        checkPregnancyComplications(data);
         saveSettingsDebounced();
         renderUI();
         return; 
@@ -345,6 +380,7 @@ function handleTimeProgression(text) {
 
         if (daysPassed > 0) {
             advanceBodyTime(daysPassed);
+            checkPregnancyComplications(data);
             toastr.info(`${getText('toastTimePassed')}${daysPassed}.`);
         }
     }
@@ -373,7 +409,6 @@ function advanceBodyTime(days) {
         if (data.cycleDay > settings.cycleLength) {
             data.cycleDay = ((data.cycleDay - 1) % settings.cycleLength) + 1;
         }
-        // Время ушло вперед — сбрасываем старые симптомы, чтобы в новый день сгенерировались свежие
         data.currentSymptoms = [];
     }
 }
@@ -419,7 +454,11 @@ function triggerPregnancy(data) {
     data.isPregnant = true;
     data.pregnancyWeeks = 0;
     data.pregnancyDays = 0;
-    data.currentSymptoms = []; // Сбрасываем симптомы обычного цикла
+    data.currentSymptoms = [];
+    
+    // Сброс триместров при новой беременности
+    data.rolledTrimesters = { 1: false, 2: false, 3: false };
+    data.activeComplication = null;
 
     const roll = Math.random() * 100;
     if (settings.mode === 'omegaverse') {
@@ -465,6 +504,17 @@ function updatePromptInjection() {
     if (data.isPregnant) {
         prompt += `Status: PREGNANT | Duration: ${data.pregnancyWeeks} weeks and ${data.pregnancyDays} days.\n`;
         
+        // Передача физиологических параметров плода и живота в ИИ
+        const fetus = getFetusData(data.pregnancyWeeks);
+        prompt += `Fetus Size: ${fetus.size} | Estimated Weight: ${fetus.weight}\n`;
+        prompt += `Maternal Body: ${fetus.belly}. ${fetus.desc}\n`;
+
+        // Передача информации об осложнении (если оно активно и проявилось)
+        if (data.activeComplication && data.activeComplication.isDiscovered) {
+            prompt += `🚨 ACTIVE MEDICAL COMPLICATION: ${data.activeComplication.name}. Symptoms: ${data.activeComplication.desc}\n`;
+            prompt += `Directive for {{char}}: Subtly or directly incorporate these medical struggles into dialogues and physical actions. Reflect the vulnerability or critical nature of this condition.\n`;
+        }
+        
         let revealToAI = false;
         if (settings.aiAwareness === 'full') {
             revealToAI = true;
@@ -478,12 +528,9 @@ function updatePromptInjection() {
             prompt += `Womb Content Details: [HIDDEN DATA]. The exact number of fetuses and their biological sex are absolutely UNKNOWN to anyone (No modern ultrasound or magic exists, or the term is too early).\n`;
             prompt += `CRITICAL DIRECTIVE FOR {{char}}: Do NOT mention, assume, guess, or reference the baby's sex or whether there are twins/multiples. Treating the pregnancy as an unpredictable mystery is mandatory. Avoid meta-gaming.\n`;
         }
-        
-        prompt += `AI Instruction: Focus purely on describing believable physical symptoms matching a ${data.pregnancyWeeks}-week term (e.g., subtle fatigue, morning nausea, sensory sensitivity, changes in appetite, or scent traits if Omegaverse).\n`;
     } else {
         prompt += `Current Cycle Day: ${data.cycleDay}/${settings.cycleLength} | Phase: ${phase}\n`;
         
-        // Передаем текущие симптомы в промпт ИИ
         if (data.currentSymptoms && data.currentSymptoms.length > 0) {
             prompt += `Current Physical Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
         }
@@ -501,8 +548,9 @@ function updatePromptInjection() {
 function renderUI() {
     const data = getChatBodyData();
 
-    // Пересчитываем симптомы перед отрисовкой
+    // Пересчитываем базовые структуры перед отрисовкой
     updateSymptomsData(data);
+    checkPregnancyComplications(data);
 
     let displayDate = getText('waitingDate');
     if (data.lastRpDate) {
@@ -510,7 +558,7 @@ function renderUI() {
         displayDate = `${parts[2]}.${parts[1]}.${parts[0]}`;
     }
 
-    // Рендерим HTML-блок со списком симптомов, если они есть
+    // HTML-блок циклических симптомов
     let symptomsHtml = '';
     if (data.currentSymptoms && data.currentSymptoms.length > 0) {
         symptomsHtml = `
@@ -519,6 +567,35 @@ function renderUI() {
                 <ul style="margin: 0; padding-left: 16px; font-size: 0.85em; line-height: 1.4; opacity: 0.95; color: var(--text-color);">
                     ${data.currentSymptoms.map(s => `<li style="margin-bottom: 2px;">• ${s}</li>`).join('')}
                 </ul>
+            </div>
+        `;
+    }
+
+    // HTML-блок физиологических изменений для беременных
+    let fetusHtml = '';
+    if (data.isPregnant) {
+        const fetus = getFetusData(data.pregnancyWeeks);
+        fetusHtml = `
+            <div style="margin: 5px 0 10px 0; padding: 10px; background: rgba(56, 189, 248, 0.1); border-left: 3px solid #38bdf8; border-radius: 4px; text-align: left; font-size: 0.85em; line-height: 1.4;">
+                <strong style="font-size: 1.05em; color: #38bdf8; display: block; margin-bottom: 5px;">${getText('fetusTitle')}</strong>
+                • Размер плода: <span style="color: #38bdf8; font-weight: bold;">${fetus.size}</span><br>
+                • Расчетный вес: <span>${fetus.weight}</span><br>
+                • Форма живота: <span>${fetus.belly}</span><br>
+                <span style="display: block; margin-top: 4px; opacity: 0.85; font-style: italic;">${fetus.desc}</span>
+            </div>
+        `;
+    }
+
+    // HTML-блок активного осложнения
+    let complicationHtml = '';
+    if (data.isPregnant && data.activeComplication && data.activeComplication.isDiscovered) {
+        complicationHtml = `
+            <div style="margin: 8px 0 10px 0; padding: 10px; background: rgba(ef, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; text-align: left; font-size: 0.85em; line-height: 1.4;">
+                <strong style="color: #f87171; display: block; margin-bottom: 4px;">${getText('complicationTitle')} ${data.activeComplication.name}</strong>
+                <span style="opacity: 0.9; display: block; margin-bottom: 6px;">${data.activeComplication.desc}</span>
+                ${data.activeComplication.curable ? `
+                    <button id="repro-cure-complication" class="menu_button" style="width: 100%; background: #059669; color: white; font-size: 11px; padding: 4px; font-weight: 600; justify-content: center;">${getText('cureBtn')}</button>
+                ` : ''}
             </div>
         `;
     }
@@ -559,8 +636,9 @@ function renderUI() {
             <div style="background: rgba(0, 0, 0, 0.25); border-left: 3px solid #f472b6; border-radius: 4px; padding: 10px; margin: 12px 0; font-size: 0.9em; text-align: left;">
                 <div style="margin-bottom: 4px;"><strong>${settings.mode === 'realism' ? getText('phaseRealism') : getText('phaseOmega')}</strong> <span style="color: #4ade80; font-weight: 700;">${getBodyPhase()}</span></div>
                 
-                <!-- ВСТАВКА СЛУЧАЙНЫХ СИМПТОМОВ -->
                 ${symptomsHtml}
+                ${fetusHtml}
+                ${complicationHtml}
 
                 ${data.isPregnant ? `
                     <div style="margin-bottom: 4px;"><strong>${getText('termInRp')}</strong> ${data.pregnancyWeeks} ${getText('weeksShort')} ${data.pregnancyDays} ${getText('daysShort')}</div>
@@ -628,6 +706,17 @@ function renderUI() {
     }
     container.html(html);
 
+    // Кнопка лечения осложнения
+    $('#repro-cure-complication').off('click').on('click', function() {
+        if (data.activeComplication) {
+            toastr.success(`Успешно вылечено/купировано: ${data.activeComplication.name}`);
+            data.activeComplication = null; 
+            saveSettingsDebounced();
+            renderUI();
+            updatePromptInjection();
+        }
+    });
+
     $('.repro-custom-btn-toggle').off('click').on('click', function() {
         isMenuCollapsed = !isMenuCollapsed;
         $('#repro-content-wrapper').slideToggle(150);
@@ -644,7 +733,6 @@ function renderUI() {
 
     $('#repro-mode').on('change', function() {
         settings.mode = $(this).val();
-        // При смене режима сбрасываем симптомы, чтобы они обновились под новую логику фаз
         getChatBodyData().currentSymptoms = [];
         saveSettingsDebounced();
         renderUI();
@@ -681,7 +769,6 @@ function renderUI() {
             bodyData.cycleDay = parseInt($('#repro-input-day').val()) || 1;
         }
 
-        // При ручном переключении параметров сбрасываем симптомы, чтобы они заново сгенерировались
         bodyData.currentSymptoms = [];
 
         saveSettingsDebounced();
@@ -699,7 +786,10 @@ function renderUI() {
         bodyData.pregnancyWeeks = weeks;
         bodyData.pregnancyDays = 0;
         bodyData.babiesCount = count;
-        bodyData.currentSymptoms = []; // СБрос цикличных симптомов
+        bodyData.currentSymptoms = []; 
+        
+        bodyData.rolledTrimesters = { 1: false, 2: false, 3: false };
+        bodyData.activeComplication = null;
 
         bodyData.babiesGenders = [];
         const lang = getLanguage();
@@ -726,6 +816,8 @@ function renderUI() {
         bodyData.babiesCount = 0;
         bodyData.babiesGenders = [];
         bodyData.currentSymptoms = [];
+        bodyData.rolledTrimesters = { 1: false, 2: false, 3: false };
+        bodyData.activeComplication = null;
 
         saveSettingsDebounced();
         renderUI();
@@ -746,7 +838,6 @@ function renderUI() {
 jQuery(async () => {
     loadSettings();
 
-    // ХУК НА СМЕНУ ЛОКАЛИЗАЦИИ/ЯЗЫКА В ТАВЕРНЕ
     if (typeof eventSource?.on === 'function') {
         eventSource.on('i18n_language_changed', () => {
             renderUI(); 
