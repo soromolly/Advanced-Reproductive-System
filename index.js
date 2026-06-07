@@ -167,6 +167,7 @@ function loadSettings() {
 function getBodyPhase() {
     const data = getChatBodyData();
     if (data.postpartumDays > 0) return getText('postpartumPhase');
+    
     if (data.isPregnant && data.pregnancyWeeks === 0 && data.cycleDay <= settings.cycleLength) return getText('follicularLuteal');
     if (data.isPregnant) return settings.mode === 'realism' ? getText('pregnancy') : getText('pregnancyOmega');
 
@@ -436,7 +437,7 @@ function processBirthTrigger() {
 }
 
 /**
- * ИСПРАВЛЕННЫЙ БЛОК: СИНХРОНИЗАЦИЯ УЗИ И ГЕНЕТИКИ С КОНТЕКСТОМ ИИ
+ * РАЗДЕЛЕННАЯ ЛОГИКА УЗИ С УЧЁТОМ МЕДИЦИНСКОГО СРОКА Скринингов
  */
 function updatePromptInjection(isImmediateBirth = false) {
     if (!settings.isEnabled) { setExtensionPrompt(EXTENSION_NAME, '', extension_prompt_types.IN_CHAT, 0); return; }
@@ -466,21 +467,25 @@ function updatePromptInjection(isImmediateBirth = false) {
         const fetus = getFetusData(data.pregnancyWeeks);
         prompt += `Fetus Size: ${fetus.size} | Maternal Body: ${fetus.belly}. ${fetus.desc}\n`;
         
-        // ФИКС ТУТ: Раскрываем ИИ данные УЗИ (количество детей и полы), если weeks >= 19 в dynamic режиме или всегда в full
-        let revealToAi = false;
-        if (settings.aiAwareness === 'full') {
-            revealToAi = true;
-        } else if (settings.aiAwareness === 'dynamic' && data.pregnancyWeeks >= 19) {
-            revealToAi = true;
-        }
+        // СМАРТ-РАЗДЕЛЕНИЕ ОКА О СВЕДОМЛЕННОСТИ ИИ (12 нед - КОЛИЧЕСТВО, 20 нед - ПОЛ)
+        let revealCount = (settings.aiAwareness === 'full') || (settings.aiAwareness === 'dynamic' && data.pregnancyWeeks >= 12);
+        let revealGenders = (settings.aiAwareness === 'full') || (settings.aiAwareness === 'dynamic' && data.pregnancyWeeks >= 20);
 
-        if (revealToAi) {
-            prompt += `[MEDICAL RECORD - ULTRASOUND DATA AVAILABLE TO {{char}}]: Medical scans/ultrasound confirm a MULTIPLE PREGNANCY. {{user}} is carrying exactly ${data.babiesCount} baby/babies. Fetal Genders: ${data.babiesGenders.join(', ')}.\n`;
-            if (data.hiddenGenetics && data.hiddenGenetics.length > 0) {
-                prompt += `Visible Fetal Genetics via Scan: ${data.hiddenGenetics.map((c, i) => `Child #${i+1}: Eyes: ${c.eyes}, Hair: ${c.hair}`).join('; ')}.\n`;
+        if (revealCount) {
+            prompt += `[MEDICAL RECORD - FIRST TRIMESTER ULTRASOUND COMPLETED]: Medical scans officially confirm a MULTIPLE PREGNANCY. {{user}} is carrying exactly ${data.babiesCount} baby/babies inside the womb. {{char}} is fully aware of the twin/multiple headcount.\n`;
+            
+            if (revealGenders) {
+                prompt += `[MEDICAL RECORD - ANATOMY SCAN (WEEK 20)]: Fetal development is sufficient to determine sex. Scans confirm the genders are: ${data.babiesGenders.join(', ')}.\n`;
+                if (data.hiddenGenetics && data.hiddenGenetics.length > 0) {
+                    prompt += `Visible Fetal Genetics: ${data.hiddenGenetics.map((c, i) => `Child #${i+1}: Eyes: ${c.eyes}, Hair: ${c.hair}`).join('; ')}.\n`;
+                }
+            } else {
+                prompt += `[ULTRASOUND STAGE NOTICE]: Fetal genders and specific cosmetic traits are still completely OBSCURED and hidden from {{char}} (too early to visually see their sex). {{char}} MUST NOT mention or guess their genders yet.\n`;
             }
+        } else if (settings.aiAwareness === 'hidden') {
+            prompt += `[SECRET DATA]: The number of babies, their genders, and traits are strictly CONCEALED from {{char}} right now (Medieval/Blind mode).\n`;
         } else {
-            prompt += `[SECRET DATA]: The number of babies, their genders, and traits are strictly CONCEALED from {{char}} right now. Do not guess or mention multiple births or genders in roleplay yet.\n`;
+            prompt += `[SECRET DATA]: Ultrasound screening has not occurred yet. The total headcount of babies and their genders are completely unknown to {{char}} right now.\n`;
         }
     } else {
         prompt += `Current Cycle Day: ${data.cycleDay}/${settings.cycleLength} | Phase: ${phase}\n`;
