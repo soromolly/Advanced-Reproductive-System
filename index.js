@@ -55,7 +55,7 @@ const MONTHS = {
 
 const TRANSLATIONS = {
     ru: {
-        title: '🧬 Система Репродукции V2',
+        title: '🧬 Система Репродукции',
         system: 'Система:', realism: 'Реализм', omegaverse: 'ОмегаВерс',
         physiology: 'Физиология:', female: 'Женщина', female_omega: 'Ж-Омега', male_omega: 'М-Омега',
         aiLogic: 'Логика ИИ:', ultrasound: 'УЗИ (20 нед)', medieval: 'Средневековье', knowsAll: 'Знает всё',
@@ -90,7 +90,7 @@ const TRANSLATIONS = {
         maxWeeksLabel: 'Срок беременности (нед):'
     },
     en: {
-        title: '🧬 Reproductive System V2',
+        title: '🧬 Reproductive System',
         system: 'System:', realism: 'Realism', omegaverse: 'OmegaVerse',
         physiology: 'Physiology:', female: 'Female', female_omega: 'F-Omega', male_omega: 'M-Omega',
         aiLogic: 'AI Awareness:', ultrasound: 'Ultrasound (20 wk)', medieval: 'Medieval (Blind)', knowsAll: 'Knows Everything',
