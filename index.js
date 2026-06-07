@@ -17,6 +17,9 @@ const DEFAULT_SETTINGS = {
     aiAwareness: 'dynamic', 
     cycleLength: 28,
     periodDuration: 5,
+    
+    // Срок вынашивания по умолчанию
+    maxPregnancyWeeks: 40, 
     chatPregnancyData: {},
     globalRollsCount: 0 
 };
@@ -80,7 +83,11 @@ const TRANSLATIONS = {
         giveBirthBtn: '🔔 ПРИНЯТЬ РОДЫ (Сюжетный триггер)',
         protectionLabel: 'Контрацепция:', protectionNone: 'Без защиты', protectionCondom: 'Презерватив (Барьерный)',
         protectionPills: 'Оральные контрацептивы (КОК)', protectionIud: 'Внутриматочная спираль (ВМС)',
-        globalRollsLabel: 'Всего скрытых проверок на зачатие:'
+        globalRollsLabel: 'Всего скрытых проверок на зачатие:',
+        eddLabel: '📅 ПДР (Дата родов):',
+        
+        // Новая строка локализации
+        maxWeeksLabel: 'Срок беременности (нед):'
     },
     en: {
         title: '🧬 Reproductive System V2',
@@ -111,7 +118,10 @@ const TRANSLATIONS = {
         giveBirthBtn: '🔔 GIVE BIRTH (Story Trigger)',
         protectionLabel: 'Contraception:', protectionNone: 'No Protection', protectionCondom: 'Condom (Barrier)',
         protectionPills: 'Oral Extraconceptives (Pills)', protectionIud: 'Intrauterine Device (IUD)',
-        globalRollsLabel: 'Total hidden conception checks:'
+        globalRollsLabel: 'Total hidden conception checks:',
+        eddLabel: '📅 EDD (Due Date):',
+        
+        maxWeeksLabel: 'Pregnancy Term (wks):'
     }
 };
 
@@ -149,6 +159,7 @@ function loadSettings() {
     }
     settings = extension_settings[EXTENSION_NAME];
     if (settings.globalRollsCount === undefined) settings.globalRollsCount = 0;
+    if (settings.maxPregnancyWeeks === undefined) settings.maxPregnancyWeeks = 40;
 
     const data = getChatBodyData();
     updateSymptomsData(data);
@@ -162,8 +173,6 @@ function getBodyPhase() {
     const data = getChatBodyData();
     if (data.postpartumDays > 0) return getText('postpartumPhase');
     
-    // ФИКС ТУТ: Скрываем статус только если срок строго равен 0 недель И день цикла меньше лимита.
-    // Если неделя уже 1-я или 19-я, "туман войны" автоматически отключается!
     if (data.isPregnant && data.pregnancyWeeks === 0 && data.cycleDay <= settings.cycleLength) return getText('follicularLuteal');
     
     if (data.isPregnant) return settings.mode === 'realism' ? getText('pregnancy') : getText('pregnancyOmega');
@@ -318,7 +327,9 @@ function advanceBodyTime(days) {
             data.pregnancyWeeks += Math.floor(data.pregnancyDays / 7);
             data.pregnancyDays %= 7;
         }
-        const maxWeeks = settings.mode === 'omegaverse' ? 36 : 40;
+        
+        // ПОДДЕРЖКА НАСТРАИВАЕМОГО СРОКА ВЫНАШИВАНИЯ
+        const maxWeeks = settings.maxPregnancyWeeks || (settings.mode === 'omegaverse' ? 36 : 40);
         if (data.pregnancyWeeks >= maxWeeks) toastr.warning(getText('toastPregEnd'));
     } else {
         data.cycleDay += days;
@@ -351,7 +362,7 @@ function checkConceptionTrigger(text) {
     } else {
         const hasVaginal = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vaginal|pussy|лоно|нутро|в тебя|внутрь тебя|до самого основания|вбиваясь|втискиваясь/i.test(lowerText);
         const hasAnal = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|butt|кишку/i.test(lowerText);
-        const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied|содрогаясь от.*спазм|содрогался от.*спазм|содрогаясь в.*спазм|содрогался в.*спазм|заполняя.*жаром|заполняя.*своим жаром|оставить.*себя|отдавал.*всё|отдал.*всё|изливая.*внутрь|излился внутрь|потоки жара|горячая струя|горячим жаром|выплеснул.*внутрь|извержение жара|что копил|толчки внутри|изливал внутрь/i.test(lowerText);
+        const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied|содрогаясь от.*спазм|содрогался от.*спазм|содрогаясь в.*спазм|содрогался в.*спазм|заполняя.*жаром|заполняя.*своим жаром|оставить.*себя|отдавал.*всё|отдал.*всё|изливая.*внутрь|излился внутрь|потоки жара|горячая струя|горячим жаром|выплеснул.*внутрь|извержение жара/i.test(lowerText);
 
         if (settings.mode === 'realism' && settings.gender === 'female' && (hasVaginal || lowerText.includes('нутро') || lowerText.includes('до самого основания') || lowerText.includes('толчки внутри')) && hasEjaculationInside && !hasAnal) {
             canConceive = true;
@@ -456,7 +467,6 @@ function updatePromptInjection(isImmediateBirth = false) {
         return;
     }
 
-    // ФИКС ТУТ: ИИ видит статус беременности, если срок больше 0 недель ИЛИ день цикла ушел в задержку
     if (data.isPregnant && (data.pregnancyWeeks > 0 || data.cycleDay > settings.cycleLength)) {
         prompt += `Status: PREGNANT | Duration: ${data.pregnancyWeeks} weeks.\n`;
         const fetus = getFetusData(data.pregnancyWeeks);
@@ -468,7 +478,7 @@ function updatePromptInjection(isImmediateBirth = false) {
         }
         if (data.currentSymptoms?.length > 0) prompt += `Current Physical Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
         
-        prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has EXPLICITLY occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
+        prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has EXPLICIT窗口 occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
         Choose exactly one that matches the finished action and write it verbatim:
         - If ejaculation has fully completed inside the vagina: <!-- SYSTEM_CHECK: vaginal -->
         - If ejaculation has fully completed inside the anus: <!-- SYSTEM_CHECK: anal -->
@@ -496,7 +506,8 @@ function renderUI() {
     }
 
     let fetusHtml = '';
-    // ФИКС ТУТ: Разворачиваем плашку плода в UI, если срок больше 0 недель ИЛИ пошли дни задержки
+    let eddHtml = ''; 
+
     if (data.isPregnant && (data.pregnancyWeeks > 0 || data.cycleDay > settings.cycleLength)) {
         const fetus = getFetusData(data.pregnancyWeeks);
         fetusHtml = `<div style="margin: 5px 0 10px 0; padding: 10px; background: rgba(56, 189, 248, 0.1); border-left: 3px solid #38bdf8; border-radius: 4px; text-align: left; font-size: 0.85em; line-height: 1.4;">
@@ -504,6 +515,17 @@ function renderUI() {
             • Размер плода: <span style="color: #38bdf8; font-weight: bold;">${fetus.size}</span><br>• Вес: <span>${fetus.weight}</span><br>• Живот: <span>${fetus.belly}</span><br>
             <span style="display: block; margin-top: 4px; opacity: 0.85; font-style: italic;">${fetus.desc}</span>
         </div>`;
+
+        if (data.lastRpDate) {
+            // ДИНАМИЧЕСКИЙ РАСЧЕТ ИЗ НАСТРОЙКИ СРОКА
+            const maxWeeks = settings.maxPregnancyWeeks || (settings.mode === 'omegaverse' ? 36 : 40);
+            const daysRemaining = (maxWeeks * 7) - ((data.pregnancyWeeks * 7) + data.pregnancyDays);
+            const parts = data.lastRpDate.split('-');
+            const eddDate = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+            eddDate.setUTCDate(eddDate.getUTCDate() + daysRemaining);
+            const eddParts = eddDate.toISOString().split('T')[0].split('-');
+            eddHtml = `<div style="margin-bottom: 4px;"><strong>${getText('eddLabel')}</strong> <span style="color: #f472b6; font-weight: bold;">${eddParts[2]}.${eddParts[1]}.${eddParts[0]}</span></div>`;
+        }
     }
 
     let postpartumHtml = '';
@@ -586,6 +608,8 @@ function renderUI() {
 
                 ${(data.isPregnant && (data.pregnancyWeeks > 0 || data.cycleDay > settings.cycleLength)) ? `
                     <div style="margin-bottom: 4px;"><strong>${getText('termInRp')}</strong> ${data.pregnancyWeeks} ${getText('weeksShort')} ${data.pregnancyDays} ${getText('daysShort')}</div>
+                    ${eddHtml}
+
                     ${(settings.aiAwareness === 'hidden') ? `
                          <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #a1a1aa; font-style: italic;">
                             🔒 Режим Средневековье: пол и генетика младенца скрыты до момента родов.
@@ -615,6 +639,12 @@ function renderUI() {
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <label style="font-size: 0.9em; opacity: 0.85;">${getText('cycleLengthLabel')}</label>
                 <input type="number" id="repro-input-cycle" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${settings.cycleLength}"/>
+            </div>
+            
+            <!-- РУЧНОЙ ВВОД ЖЕЛАЕМОЙ ДЛИТЕЛЬНОСТИ БЕРЕМЕННОСТИ В НЕДЕЛЯХ -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <label style="font-size: 0.9em; opacity: 0.85;">${getText('maxWeeksLabel')}</label>
+                <input type="number" id="repro-input-maxweeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${settings.maxPregnancyWeeks || 40}" min="1" max="50"/>
             </div>
             
             ${data.isPregnant ? `
@@ -672,10 +702,13 @@ function renderUI() {
         updatePromptInjection();
     });
 
-    // Изменение ручной прокрутки параметров недели (чтобы принудительно активировать статус)
     $('#repro-apply-params').on('click', function() {
         const bodyData = getChatBodyData();
         settings.cycleLength = parseInt($('#repro-input-cycle').val()) || 28;
+        
+        // СОХРАНЕНИЕ НАСТРАИВАЕМОГО СРОКА
+        settings.maxPregnancyWeeks = parseInt($('#repro-input-maxweeks').val()) || 40;
+        
         const manualDateVal = $('#repro-input-rpdate').val();
         if (manualDateVal) bodyData.lastRpDate = manualDateVal;
 
@@ -741,7 +774,7 @@ function renderUI() {
         if (confirm("Вы уверены, что хотите полностью очистить данные этого чата?")) {
             const chatId = getCurrentChatId();
             settings.chatPregnancyData[chatId] = createDefaultBodyData();
-            saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.warning(getText('toastResetAll'));
+            saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.warning(getText('warningResetAll'));
         }
     });
 }
