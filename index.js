@@ -66,7 +66,7 @@ const TRANSLATIONS = {
         applyBtn: '▶ Применить изменения', initPregnancyHeader: 'Задать беременность',
         manualWeeks: 'Срок (нед):', manualCount: 'Плодов:', startPregnancyBtn: '🤰 Начать беременность',
         resetPregnancyBtn: '🚼 Сбросить беременность', resetAllBtn: 'Полный сброс данных',
-        toastSaved: 'Параметры успешно сохранены!', toastManualPreg: 'Ббеременность установлена вручную: ',
+        toastSaved: 'Параметры успешно сохранены!', toastManualPreg: 'Беременность установлена вручную: ',
         toastResetPreg: 'Беременность сброшена.', toastResetAll: 'Данные чата полностью очищены.',
         toastTimePassed: 'Репродуктивная система: В РП прошло дней: ',
         toastConception: '🚨 ЗАЧАТИЕ ПРОИЗОШЛО! Успешная имплантация в матке.',
@@ -98,7 +98,7 @@ const TRANSLATIONS = {
         pregnancyWeekLabel: 'Week:', cycleDayLabel: 'Cycle Day:',
         applyBtn: '▶ Apply Changes', initPregnancyHeader: 'Initialize Pregnancy',
         manualWeeks: 'Term (wks):', manualCount: 'Babies:', startPregnancyBtn: '🤰 Start Pregnancy',
-        resetPregnancyBtn: '𚚼 Reset Pregnancy Only', resetAllBtn: 'Full Data Reset',
+        resetPregnancyBtn: '🚼 Reset Pregnancy Only', resetAllBtn: 'Full Data Reset',
         toastSaved: 'Parameters successfully saved!', toastManualPreg: 'Pregnancy set manually: ',
         toastResetPreg: 'Pregnancy has been reset.', toastResetAll: 'Chat data fully cleared.',
         toastTimePassed: 'Reproductive system: Days passed in RP: ',
@@ -183,9 +183,6 @@ function getBodyPhase() {
     }
 }
 
-/**
- * ИСПРАВЛЕННЫЙ И ДОПОЛНЕННЫЙ ПОДБОР СИМПТОМОВ ДЛЯ БЕРЕМЕННОСТИ
- */
 function updateSymptomsData(data) {
     if (data.postpartumDays > 0) {
         data.currentSymptoms = [];
@@ -197,19 +194,15 @@ function updateSymptomsData(data) {
     let phaseKey = null;
     
     if (data.isPregnant) {
-        // "Туман войны": если это 0-я неделя и задержки еще нет — симптомы скрыты для сохранения интриги
         if (data.pregnancyWeeks === 0 && data.cycleDay <= settings.cycleLength) {
             data.currentSymptoms = [];
             return;
         }
-        
-        // Распределяем симптомы по неделям триместров
         const week = data.pregnancyWeeks;
         if (week <= 12) phaseKey = 'preg_trimester_1';
         else if (week >= 13 && week <= 26) phaseKey = 'preg_trimester_2';
         else phaseKey = 'preg_trimester_3';
     } else {
-        // Стандартный пулл симптомов менструального цикла
         if (phase === getText('menstruation')) phaseKey = 'menstruation';
         else if (phase === getText('ovulation')) phaseKey = 'ovulation';
         else if (phase === getText('heat')) phaseKey = (settings.gender === 'male_omega') ? 'heat_male' : 'heat_female';
@@ -338,10 +331,7 @@ function advanceBodyTime(days) {
             data.pregnancyWeeks += Math.floor(data.pregnancyDays / 7);
             data.pregnancyDays %= 7;
         }
-        
-        // ФИКС ТУТ: Сбрасываем старые симптомы при прокрутке времени беременности, чтобы сгенерировать свежие под триместр
         data.currentSymptoms = []; 
-        
         const maxWeeks = settings.maxPregnancyWeeks || (settings.mode === 'omegaverse' ? 36 : 40);
         if (data.pregnancyWeeks >= maxWeeks) toastr.warning(getText('toastPregEnd'));
     } else {
@@ -485,7 +475,6 @@ function updatePromptInjection(isImmediateBirth = false) {
         const fetus = getFetusData(data.pregnancyWeeks);
         prompt += `Fetus Size: ${fetus.size} | Maternal Body: ${fetus.belly}. ${fetus.desc}\n`;
         
-        // Инъекция текущих триместровых симптомов в промпт ИИ
         if (data.currentSymptoms?.length > 0) {
             prompt += `Current Pregnancy Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
         }
@@ -774,7 +763,6 @@ function renderUI() {
         else { arrow.removeClass('fa-chevron-down').addClass('fa-chevron-up'); $('.repro-custom-btn-toggle').css('border-radius', '10px 10px 0 0'); }
     });
 
-    // Очистка при смене режимов
     $('#repro-mode').on('change', function() { settings.mode = $(this).val(); getChatBodyData().currentSymptoms = []; saveSettingsDebounced(); renderUI(); updatePromptInjection(); });
     $('#repro-gender').on('change', function() { settings.gender = $(this).val(); saveSettingsDebounced(); renderUI(); updatePromptInjection(); });
     $('#repro-awareness').on('change', function() { settings.aiAwareness = $(this).val(); saveSettingsDebounced(); renderUI(); updatePromptInjection(); });
@@ -825,7 +813,7 @@ jQuery(async () => {
         const text = chat[messageIndex].mes; if (!text) return;
 
         handleTimeProgression(text);
-        checkCon ConceptionTrigger(text);
+        checkConceptionTrigger(text);
         updatePromptInjection();
     });
 
