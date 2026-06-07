@@ -6,6 +6,6 @@
     "js": "index.js",
     "css": "style.css",
     "author": "soromolly",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "description": "Автономное отслеживание цикла, течки и скрытой от ИИ беременности на основе RP-дат из ворлдбита."
 }
