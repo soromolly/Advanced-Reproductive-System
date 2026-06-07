@@ -39,6 +39,10 @@ function createDefaultBodyData() {
     };
 }
 
+// ВОТ ЭТИ ДВЕ СТРОЧКИ, КОТОРЫЕ Я СЛУЧАЙНО ПОТЕРЯЛ:
+let settings = Object.assign({}, DEFAULT_SETTINGS);
+let isMenuCollapsed = true; 
+
 const MONTHS = {
     'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3, 'мая': 4, 'июня': 5,
     'июля': 6, 'августа': 7, 'сентября': 8, 'октября': 9, 'ноября': 10, 'декабря': 11,
@@ -305,9 +309,6 @@ function advanceBodyTime(days) {
     }
 }
 
-/**
- * РАСШИРЕННЫЙ ЛИТЕРАТУРНЫЙ ФИКС ДЛЯ ДЕТЕКЦИИ АКТа И СЕМЯИЗВЕРЖЕНИЯ
- */
 function checkConceptionTrigger(text) {
     const data = getChatBodyData();
     if (data.isPregnant || data.postpartumDays > 0) return;
@@ -315,17 +316,13 @@ function checkConceptionTrigger(text) {
     const lowerText = text.toLowerCase();
     const phase = getBodyPhase();
     
-    // Базовые маркеры проникновения + глубокий художественный парсинг (лоно, нутро, до основания)
     const hasVaginal = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vaginal|pussy|лоно|нутро|в тебя|внутрь тебя|до самого основания|вбиваясь|втискиваясь/i.test(lowerText);
     const hasAnal = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|butt|кишку/i.test(lowerText);
-    
-    // МАССИВНЫЙ ЛИТЕРАТУРНЫЙ СЛОВАРЬ ЭЯКУЛЯЦИИ (Ловит спазмы, выплески, жар и заполнение нутра)
     const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied|содрогаясь от.*спазм|содрогался от.*спазм|содрогаясь в.*спазм|содрогался в.*спазм|заполняя.*жаром|заполняя.*своим жаром|оставить.*себя|отдавал.*всё|отдал.*всё|изливая.*внутрь|излился внутрь|потоки жара|горячая струя|горячим жаром|выплеснул.*внутрь|извержение жара/i.test(lowerText);
 
     let isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     let canConceive = false;
 
-    // Сверяем условия залёта по выбранной анатомии
     if (settings.mode === 'realism' && settings.gender === 'female' && (hasVaginal || lowerText.includes('нутро') || lowerText.includes('до самого основания')) && hasEjaculationInside) {
         canConceive = true;
     } else if (settings.mode === 'omegaverse' && hasEjaculationInside) {
