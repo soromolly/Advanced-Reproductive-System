@@ -79,8 +79,7 @@ const TRANSLATIONS = {
         giveBirthBtn: '🔔 ПРИНЯТЬ РОДЫ (Сюжетный триггер)',
         protectionLabel: 'Контрацепция:', protectionNone: 'Без защиты', protectionCondom: 'Презерватив (Барьерный)',
         protectionPills: 'Оральные контрацептивы (КОК)', protectionIud: 'Внутриматочная спираль (ВМС)',
-        globalRollsLabel: 'Всего скрытых проверок на зачатие:',
-        manualRollBtn: '💦 Зафиксировать акт внутрь (Вручную)'
+        globalRollsLabel: 'Всего скрытых проверок на зачатие:'
     },
     en: {
         title: '🧬 Reproductive System V2',
@@ -110,8 +109,7 @@ const TRANSLATIONS = {
         giveBirthBtn: '🔔 GIVE BIRTH (Story Trigger)',
         protectionLabel: 'Contraception:', protectionNone: 'No Protection', protectionCondom: 'Condom (Barrier)',
         protectionPills: 'Oral Extraconceptives (Pills)', protectionIud: 'Intrauterine Device (IUD)',
-        globalRollsLabel: 'Total hidden conception checks:',
-        manualRollBtn: '💦 Force Internal Ejaculation (Manual)'
+        globalRollsLabel: 'Total hidden conception checks:'
     }
 };
 
@@ -174,9 +172,6 @@ function getBodyPhase() {
     }
 }
 
-/**
- * ИСПРАВЛЕННОЕ РАЗДЕЛЕНИЕ СИМПТОМОВ ПОД ОМЕГАВЕРС
- */
 function updateSymptomsData(data) {
     if (data.isPregnant || data.postpartumDays > 0) {
         data.currentSymptoms = [];
@@ -192,7 +187,6 @@ function updateSymptomsData(data) {
     } else if (phase === getText('ovulation')) {
         phaseKey = 'ovulation';
     } else if (phase === getText('heat')) {
-        // Умный ролл симптомов течки: проверяем анатомию М-Омеги или Ж-Омеги
         phaseKey = (settings.gender === 'male_omega') ? 'heat_male' : 'heat_female';
     }
 
@@ -330,9 +324,9 @@ function checkConceptionTrigger(text) {
     let isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     let canConceive = false;
 
-    const isVaginalTag = lowerText.includes('<!-- system_check: vaginal -->');
-    const isAnalTag = lowerText.includes('<!-- system_check: anal -->');
-    const isOralTag = lowerText.includes('<!-- system_check: oral -->');
+    const isVaginalTag = lowerText.includes('');
+    const isAnalTag = lowerText.includes('');
+    const isOralTag = lowerText.includes('');
 
     if (isVaginalTag || isAnalTag || isOralTag) {
         if (settings.mode === 'realism' && settings.gender === 'female' && isVaginalTag) {
@@ -462,10 +456,7 @@ function updatePromptInjection(isImmediateBirth = false) {
         
         prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has EXPLICITLY occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
         Choose exactly one that matches the finished action and write it verbatim:
-        - If ejaculation has fully completed inside the vagina: <!-- SYSTEM_CHECK: vaginal -->
-        - If ejaculation has fully completed inside the anus: <!-- SYSTEM_CHECK: anal -->
-        - If ejaculation has fully completed inside the mouth/oral: <!-- SYSTEM_CHECK: oral -->
-        ⚠️ STRICTION LIMITATION: If the intimacy or sex scene is just beginning, ongoing, or represents foreplay WITHOUT actual completed ejaculation yet, you MUST NOT append any comment tag. Leave the end of the text clean. Do not add text after the comment.\n`;
+        - If ejaculation has fully completed inside the vagina: - If ejaculation has fully completed inside the anus: - If ejaculation has fully completed inside the mouth/oral: ⚠️ STRICTION LIMITATION: If the intimacy or sex scene is just beginning, ongoing, or represents foreplay WITHOUT actual completed ejaculation yet, you MUST NOT append any comment tag. Leave the end of the text clean. Do not add text after the comment.\n`;
     }
 
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
@@ -473,8 +464,6 @@ function updatePromptInjection(isImmediateBirth = false) {
 
 function renderUI() {
     const data = getChatBodyData();
-    
-    // Пересчет симптомов с учетом новой омега-логики перед выводом на экран
     updateSymptomsData(data);
     checkPregnancyComplications(data);
 
@@ -600,10 +589,6 @@ function renderUI() {
                 <button id="repro-btn-birth-trigger" class="menu_button" style="width: 100%; background: #10b981; color: white; font-weight: 700; margin-bottom: 10px; padding: 8px 0; justify-content: center;">${getText('giveBirthBtn')}</button>
             ` : ''}
 
-            ${(!data.isPregnant && data.postpartumDays === 0) ? `
-                <button id="repro-btn-manual-roll" class="menu_button" style="width: 100%; background: #3b82f6; color: white; font-weight: 600; margin-bottom: 12px; padding: 6px 0; justify-content: center; font-size: 0.85em;">${getText('manualRollBtn')}</button>
-            ` : ''}
-
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <label style="font-size: 0.9em; opacity: 0.85;">${getText('rpDateLabel')}</label>
                 <input type="date" id="repro-input-rpdate" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${data.lastRpDate || ''}"/>
@@ -662,10 +647,6 @@ function renderUI() {
         $('#extensions_settings').append(container);
     }
     container.html(html);
-
-    $('#repro-btn-manual-roll').off('click').on('click', function() {
-        checkConceptionTrigger("<!-- system_check: vaginal -->");
-    });
 
     $('#repro-contraception').off('change').on('change', function() {
         data.contraception = $(this).val();
