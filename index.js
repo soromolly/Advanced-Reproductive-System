@@ -39,7 +39,6 @@ function createDefaultBodyData() {
     };
 }
 
-// ВОТ ЭТИ ДВЕ СТРОЧКИ, КОТОРЫЕ Я СЛУЧАЙНО ПОТЕРЯЛ:
 let settings = Object.assign({}, DEFAULT_SETTINGS);
 let isMenuCollapsed = true; 
 
@@ -80,7 +79,10 @@ const TRANSLATIONS = {
         giveBirthBtn: '🔔 ПРИНЯТЬ РОДЫ (Сюжетный триггер)',
         protectionLabel: 'Контрацепция:', protectionNone: 'Без защиты', protectionCondom: 'Презерватив (Барьерный)',
         protectionPills: 'Оральные контрацептивы (КОК)', protectionIud: 'Внутриматочная спираль (ВМС)',
-        globalRollsLabel: 'Всего скрытых проверок на зачатие:'
+        globalRollsLabel: 'Всего скрытых проверок на зачатие:',
+        
+        // Кнопка принудительного броска кубика
+        manualRollBtn: '💦 Зафиксировать акт внутрь (Вручную)'
     },
     en: {
         title: '🧬 Reproductive System V2',
@@ -110,7 +112,9 @@ const TRANSLATIONS = {
         giveBirthBtn: '🔔 GIVE BIRTH (Story Trigger)',
         protectionLabel: 'Contraception:', protectionNone: 'No Protection', protectionCondom: 'Condom (Barrier)',
         protectionPills: 'Oral Contraceptives (Pills)', protectionIud: 'Intrauterine Device (IUD)',
-        globalRollsLabel: 'Total hidden conception checks:'
+        globalRollsLabel: 'Total hidden conception checks:',
+        
+        manualRollBtn: '💦 Force Internal Ejaculation (Manual)'
     }
 };
 
@@ -318,16 +322,18 @@ function checkConceptionTrigger(text) {
     
     const hasVaginal = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vaginal|pussy|лоно|нутро|в тебя|внутрь тебя|до самого основания|вбиваясь|втискиваясь/i.test(lowerText);
     const hasAnal = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|butt|кишку/i.test(lowerText);
-    const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied|содрогаясь от.*спазм|содрогался от.*спазм|содрогаясь в.*спазм|содрогался в.*спазм|заполняя.*жаром|заполняя.*своим жаром|оставить.*себя|отдавал.*всё|отдал.*всё|изливая.*внутрь|излился внутрь|потоки жара|горячая струя|горячим жаром|выплеснул.*внутрь|извержение жара/i.test(lowerText);
+    
+    // БЛОК РАСШИРЕН ДЛЯ ХУДОЖЕСТВЕННЫХ ОПИСАНИЙ (включает "копил в себе", "толчки внутри", "изливал")
+    const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied|содрогаясь от.*спазм|содрогался от.*спазм|содрогаясь в.*спазм|содрогался в.*спазм|заполняя.*жаром|заполняя.*своим жаром|оставить.*себя|отдавал.*всё|отдал.*всё|изливая.*внутрь|излился внутрь|потоки жара|горячая струя|горячим жаром|выплеснул.*внутрь|извержение жара|что копил|толчки внутри|изливал внутрь/i.test(lowerText);
 
     let isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     let canConceive = false;
 
-    if (settings.mode === 'realism' && settings.gender === 'female' && (hasVaginal || lowerText.includes('нутро') || lowerText.includes('до самого основания')) && hasEjaculationInside) {
+    if (settings.mode === 'realism' && settings.gender === 'female' && (hasVaginal || lowerText.includes('нутро') || lowerText.includes('до самого основания') || lowerText.includes('толчки внутри')) && hasEjaculationInside) {
         canConceive = true;
     } else if (settings.mode === 'omegaverse' && hasEjaculationInside) {
-        if (settings.gender === 'female_omega' && (hasVaginal || lowerText.includes('нутро'))) canConceive = true;
-        else if (settings.gender === 'male_omega' && (hasAnal || lowerText.includes('нутро'))) canConceive = true;
+        if (settings.gender === 'female_omega' && (hasVaginal || lowerText.includes('нутро') || lowerText.includes('толчки внутри'))) canConceive = true;
+        else if (settings.gender === 'male_omega' && (hasAnal || lowerText.includes('нутро') || lowerText.includes('толчки внутри'))) canConceive = true;
     }
 
     if (canConceive) {
@@ -435,6 +441,9 @@ function updatePromptInjection(isImmediateBirth = false) {
             prompt += `Active Birth Control Method: ${data.contraception.toUpperCase()}.\n`;
         }
         if (data.currentSymptoms?.length > 0) prompt += `Current Physical Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
+        
+        // ЖЕСТКАЯ ДИРЕКТИВА ДЛЯ ИИ: ДИКТУЕМ ПРАВИЛА ОПИСАНИЯ ОРГАЗМА И ЭЯКУЛЯЦИИ
+        prompt += `🚨 CRITICAL WRITING DIRECTIVE FOR {{char}}: During descriptive intimacy or orgasm scenes, if {{char}} releases or ejaculates inside {{user}}, {{char}} MUST explicitly include stable anchoring text markers such as "излил семя внутрь", "кончил внутрь", "эякуляция внутрь нутра", "изливал внутрь лона", or "выплеснул весь свой жар внутрь". Do not rely solely on highly abstract, vague or spiritual phrases. Clear, grounded physiological tracking is mandatory for synchronization.\n`;
     }
 
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
@@ -563,8 +572,14 @@ function renderUI() {
                 <div style="font-size: 0.85em; color: #64748b; margin-top: 6px;">📅 ${getText('sync')} ${displayDate}</div>
             </div>
 
+            <!-- СЮЖЕТНАЯ КНОПКА РОДОВ ДЛЯ БЕРЕМЕННЫХ -->
             ${data.isPregnant ? `
                 <button id="repro-btn-birth-trigger" class="menu_button" style="width: 100%; background: #10b981; color: white; font-weight: 700; margin-bottom: 10px; padding: 8px 0; justify-content: center;">${getText('giveBirthBtn')}</button>
+            ` : ''}
+
+            <!-- ФЕЙЛСЕЙФ КНОПКА: РУЧНОЙ БРОСОК КУБИКА НА ЗАЧАТИЕ (ЕСЛИ БОТ ПИШЕТ СЛИШКОМ СЛОЖНО) -->
+            ${(!data.isPregnant && data.postpartumDays === 0) ? `
+                <button id="repro-btn-manual-roll" class="menu_button" style="width: 100%; background: #3b82f6; color: white; font-weight: 600; margin-bottom: 12px; padding: 6px 0; justify-content: center; font-size: 0.85em;">${getText('manualRollBtn')}</button>
             ` : ''}
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -625,6 +640,11 @@ function renderUI() {
         $('#extensions_settings').append(container);
     }
     container.html(html);
+
+    // Клик по ручной кнопке симулирует идеальный триггер эякуляции
+    $('#repro-btn-manual-roll').off('click').on('click', function() {
+        checkConceptionTrigger("излил семя внутрь изливал внутрь лона толчки внутри");
+    });
 
     $('#repro-contraception').off('change').on('change', function() {
         data.contraception = $(this).val();
