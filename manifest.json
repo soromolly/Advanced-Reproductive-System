@@ -5,7 +5,7 @@
     "optional": [],
     "js": "index.js",
     "css": "style.css",
-    "author": "AI Developer",
+    "author": "soromolly",
     "version": "1.0.4",
     "description": "Автономное отслеживание цикла, течки и скрытой от ИИ беременности на основе RP-дат из ворлдбита."
 }
