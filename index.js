@@ -104,7 +104,7 @@ const TRANSLATIONS = {
         menstruation: 'Menstruation 🩸', ovulation: 'Ovulation (Conception Window) ✨',
         follicularLuteal: 'Follicular/Luteal Phase', heat: 'Heat (Peak Fertility) 🔥', quiescence: 'Quiescence Period',
         symptomsTitle: '🎯 Body Symptoms:', fetusTitle: '👶 Fetus & Body Development:',
-        complicationTitle: '⚠️ Medical Complication:', cureBtn: '💊 Treat / Alleviate Complication',
+        complicationTitle: '⚠️ Medical Complication:', cureBtn: '💊 Treat / Almacen Complication',
         postpartumPhase: 'Postpartum Recovery 🩹', newbornTitle: '🍼 Children in Family:',
         giveBirthBtn: '🔔 GIVE BIRTH (Story Trigger)',
         protectionLabel: 'Contraception:', protectionNone: 'No Protection', protectionCondom: 'Condom (Barrier)',
@@ -215,19 +215,24 @@ function checkPregnancyComplications(data) {
     }
 }
 
+// ФИКС ТУТ: Принудительный парсинг в формате UTC, чтобы дата не откатывалась назад из-за таймзон
 function parseRpDateFromText(text) {
     if (!text) return null;
     const textRegex = /(\d{1,2})\s+([a-zA-Zа-яёА-ЯЁ]+)\s+(\d{4})/i;
     const textMatch = text.match(textRegex);
     if (textMatch) {
         const day = parseInt(textMatch[1]), monthStr = textMatch[2].toLowerCase(), year = parseInt(textMatch[3]);
-        if (MONTHS[monthStr] !== undefined && day >= 1 && day <= 31) return new Date(year, MONTHS[monthStr], day);
+        if (MONTHS[monthStr] !== undefined && day >= 1 && day <= 31) {
+            return new Date(Date.UTC(year, MONTHS[monthStr], day));
+        }
     }
     const numRegex = /(\d{1,2})[\.\/](\d{1,2})[\.\/](\d{4})/;
     const numMatch = text.match(numRegex);
     if (numMatch) {
         const day = parseInt(numMatch[1]), month = parseInt(numMatch[2]) - 1, year = parseInt(numMatch[3]);
-        if (month >= 0 && month <= 11 && day >= 1 && day <= 31) return new Date(year, month, day);
+        if (month >= 0 && month <= 11 && day >= 1 && day <= 31) {
+            return new Date(Date.UTC(year, month, day));
+        }
     }
     return null;
 }
@@ -245,11 +250,14 @@ function parseRelativeTimeFromText(text) {
 
     const data = getChatBodyData();
     if (data.lastRpDate) {
-        const baseDate = new Date(data.lastRpDate), futureDate = new Date(data.lastRpDate);
-        if (unit.startsWith('дн') || unit.startsWith('day')) futureDate.setDate(futureDate.getDate() + count);
-        else if (unit.startsWith('нед') || unit.startsWith('week')) futureDate.setDate(futureDate.getDate() + (count * 7));
-        else if (unit.startsWith('мес') || unit.startsWith('month')) futureDate.setMonth(futureDate.getMonth() + count);
-        else if (unit.startsWith('ле') || unit.startsWith('год') || unit.startsWith('year')) futureDate.setFullYear(futureDate.getFullYear() + count);
+        const parts = data.lastRpDate.split('-');
+        const futureDate = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+        const baseDate = new Date(futureDate.getTime());
+
+        if (unit.startsWith('дн') || unit.startsWith('day')) futureDate.setUTCDate(futureDate.getUTCDate() + count);
+        else if (unit.startsWith('нед') || unit.startsWith('week')) futureDate.setUTCDate(futureDate.getUTCDate() + (count * 7));
+        else if (unit.startsWith('мес') || unit.startsWith('month')) futureDate.setUTCMonth(futureDate.getUTCMonth() + count);
+        else if (unit.startsWith('ле') || unit.startsWith('год') || unit.startsWith('year')) futureDate.setUTCFullYear(futureDate.getUTCFullYear() + count);
 
         const totalDays = Math.floor((futureDate - baseDate) / (1000 * 60 * 60 * 24));
         data.lastRpDate = futureDate.toISOString().split('T')[0];
@@ -275,7 +283,8 @@ function handleTimeProgression(text) {
     const currentRpDateStr = currentRpDate.toISOString().split('T')[0];
 
     if (data.lastRpDate && data.lastRpDate !== currentRpDateStr) {
-        const daysPassed = Math.floor((currentRpDate - new Date(data.lastRpDate)) / (1000 * 60 * 60 * 24));
+        const previousDate = new Date(data.lastRpDate);
+        const daysPassed = Math.floor((currentRpDate - previousDate) / (1000 * 60 * 60 * 24));
         if (daysPassed > 0) {
             advanceBodyTime(daysPassed);
             checkPregnancyComplications(data);
