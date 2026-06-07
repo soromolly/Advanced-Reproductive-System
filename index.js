@@ -17,8 +17,6 @@ const DEFAULT_SETTINGS = {
     aiAwareness: 'dynamic', 
     cycleLength: 28,
     periodDuration: 5,
-    
-    // Срок вынашивания по умолчанию
     maxPregnancyWeeks: 40, 
     chatPregnancyData: {},
     globalRollsCount: 0 
@@ -55,7 +53,7 @@ const MONTHS = {
 
 const TRANSLATIONS = {
     ru: {
-        title: '🧬 Система Репродукции',
+        title: '🧬 Система Репродукции V2',
         system: 'Система:', realism: 'Реализм', omegaverse: 'ОмегаВерс',
         physiology: 'Физиология:', female: 'Женщина', female_omega: 'Ж-Омега', male_omega: 'М-Омега',
         aiLogic: 'Логика ИИ:', ultrasound: 'УЗИ (20 нед)', medieval: 'Средневековье', knowsAll: 'Знает всё',
@@ -85,12 +83,10 @@ const TRANSLATIONS = {
         protectionPills: 'Оральные контрацептивы (КОК)', protectionIud: 'Внутриматочная спираль (ВМС)',
         globalRollsLabel: 'Всего скрытых проверок на зачатие:',
         eddLabel: '📅 ПДР (Дата родов):',
-        
-        // Новая строка локализации
         maxWeeksLabel: 'Срок беременности (нед):'
     },
     en: {
-        title: '🧬 Reproductive System',
+        title: '🧬 Reproductive System V2',
         system: 'System:', realism: 'Realism', omegaverse: 'OmegaVerse',
         physiology: 'Physiology:', female: 'Female', female_omega: 'F-Omega', male_omega: 'M-Omega',
         aiLogic: 'AI Awareness:', ultrasound: 'Ultrasound (20 wk)', medieval: 'Medieval (Blind)', knowsAll: 'Knows Everything',
@@ -120,7 +116,6 @@ const TRANSLATIONS = {
         protectionPills: 'Oral Extraconceptives (Pills)', protectionIud: 'Intrauterine Device (IUD)',
         globalRollsLabel: 'Total hidden conception checks:',
         eddLabel: '📅 EDD (Due Date):',
-        
         maxWeeksLabel: 'Pregnancy Term (wks):'
     }
 };
@@ -172,9 +167,7 @@ function loadSettings() {
 function getBodyPhase() {
     const data = getChatBodyData();
     if (data.postpartumDays > 0) return getText('postpartumPhase');
-    
     if (data.isPregnant && data.pregnancyWeeks === 0 && data.cycleDay <= settings.cycleLength) return getText('follicularLuteal');
-    
     if (data.isPregnant) return settings.mode === 'realism' ? getText('pregnancy') : getText('pregnancyOmega');
 
     const day = data.cycleDay;
@@ -327,8 +320,6 @@ function advanceBodyTime(days) {
             data.pregnancyWeeks += Math.floor(data.pregnancyDays / 7);
             data.pregnancyDays %= 7;
         }
-        
-        // ПОДДЕРЖКА НАСТРАИВАЕМОГО СРОКА ВЫНАШИВАНИЯ
         const maxWeeks = settings.maxPregnancyWeeks || (settings.mode === 'omegaverse' ? 36 : 40);
         if (data.pregnancyWeeks >= maxWeeks) toastr.warning(getText('toastPregEnd'));
     } else {
@@ -444,6 +435,9 @@ function processBirthTrigger() {
     toastr.success("Сюжетное событие: Роды начались!");
 }
 
+/**
+ * ИСПРАВЛЕННЫЙ БЛОК: СИНХРОНИЗАЦИЯ УЗИ И ГЕНЕТИКИ С КОНТЕКСТОМ ИИ
+ */
 function updatePromptInjection(isImmediateBirth = false) {
     if (!settings.isEnabled) { setExtensionPrompt(EXTENSION_NAME, '', extension_prompt_types.IN_CHAT, 0); return; }
     const data = getChatBodyData();
@@ -471,6 +465,23 @@ function updatePromptInjection(isImmediateBirth = false) {
         prompt += `Status: PREGNANT | Duration: ${data.pregnancyWeeks} weeks.\n`;
         const fetus = getFetusData(data.pregnancyWeeks);
         prompt += `Fetus Size: ${fetus.size} | Maternal Body: ${fetus.belly}. ${fetus.desc}\n`;
+        
+        // ФИКС ТУТ: Раскрываем ИИ данные УЗИ (количество детей и полы), если weeks >= 19 в dynamic режиме или всегда в full
+        let revealToAi = false;
+        if (settings.aiAwareness === 'full') {
+            revealToAi = true;
+        } else if (settings.aiAwareness === 'dynamic' && data.pregnancyWeeks >= 19) {
+            revealToAi = true;
+        }
+
+        if (revealToAi) {
+            prompt += `[MEDICAL RECORD - ULTRASOUND DATA AVAILABLE TO {{char}}]: Medical scans/ultrasound confirm a MULTIPLE PREGNANCY. {{user}} is carrying exactly ${data.babiesCount} baby/babies. Fetal Genders: ${data.babiesGenders.join(', ')}.\n`;
+            if (data.hiddenGenetics && data.hiddenGenetics.length > 0) {
+                prompt += `Visible Fetal Genetics via Scan: ${data.hiddenGenetics.map((c, i) => `Child #${i+1}: Eyes: ${c.eyes}, Hair: ${c.hair}`).join('; ')}.\n`;
+            }
+        } else {
+            prompt += `[SECRET DATA]: The number of babies, their genders, and traits are strictly CONCEALED from {{char}} right now. Do not guess or mention multiple births or genders in roleplay yet.\n`;
+        }
     } else {
         prompt += `Current Cycle Day: ${data.cycleDay}/${settings.cycleLength} | Phase: ${phase}\n`;
         if (data.contraception !== 'none') {
@@ -478,7 +489,7 @@ function updatePromptInjection(isImmediateBirth = false) {
         }
         if (data.currentSymptoms?.length > 0) prompt += `Current Physical Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
         
-        prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has EXPLICIT窗口 occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
+        prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has EXPLICITLY occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
         Choose exactly one that matches the finished action and write it verbatim:
         - If ejaculation has fully completed inside the vagina: <!-- SYSTEM_CHECK: vaginal -->
         - If ejaculation has fully completed inside the anus: <!-- SYSTEM_CHECK: anal -->
@@ -517,7 +528,6 @@ function renderUI() {
         </div>`;
 
         if (data.lastRpDate) {
-            // ДИНАМИЧЕСКИЙ РАСЧЕТ ИЗ НАСТРОЙКИ СРОКА
             const maxWeeks = settings.maxPregnancyWeeks || (settings.mode === 'omegaverse' ? 36 : 40);
             const daysRemaining = (maxWeeks * 7) - ((data.pregnancyWeeks * 7) + data.pregnancyDays);
             const parts = data.lastRpDate.split('-');
@@ -641,7 +651,6 @@ function renderUI() {
                 <input type="number" id="repro-input-cycle" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${settings.cycleLength}"/>
             </div>
             
-            <!-- РУЧНОЙ ВВОД ЖЕЛАЕМОЙ ДЛИТЕЛЬНОСТИ БЕРЕМЕННОСТИ В НЕДЕЛЯХ -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <label style="font-size: 0.9em; opacity: 0.85;">${getText('maxWeeksLabel')}</label>
                 <input type="number" id="repro-input-maxweeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${settings.maxPregnancyWeeks || 40}" min="1" max="50"/>
@@ -705,8 +714,6 @@ function renderUI() {
     $('#repro-apply-params').on('click', function() {
         const bodyData = getChatBodyData();
         settings.cycleLength = parseInt($('#repro-input-cycle').val()) || 28;
-        
-        // СОХРАНЕНИЕ НАСТРАИВАЕМОГО СРОКА
         settings.maxPregnancyWeeks = parseInt($('#repro-input-maxweeks').val()) || 40;
         
         const manualDateVal = $('#repro-input-rpdate').val();
