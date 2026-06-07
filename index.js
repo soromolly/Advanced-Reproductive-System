@@ -174,6 +174,9 @@ function getBodyPhase() {
     }
 }
 
+/**
+ * ИСПРАВЛЕННОЕ РАЗДЕЛЕНИЕ СИМПТОМОВ ПОД ОМЕГАВЕРС
+ */
 function updateSymptomsData(data) {
     if (data.isPregnant || data.postpartumDays > 0) {
         data.currentSymptoms = [];
@@ -183,8 +186,15 @@ function updateSymptomsData(data) {
 
     const phase = getBodyPhase();
     let phaseKey = null;
-    if (phase === getText('menstruation')) phaseKey = 'menstruation';
-    else if (phase === getText('ovulation') || phase === getText('heat')) phaseKey = 'ovulation';
+    
+    if (phase === getText('menstruation')) {
+        phaseKey = 'menstruation';
+    } else if (phase === getText('ovulation')) {
+        phaseKey = 'ovulation';
+    } else if (phase === getText('heat')) {
+        // Умный ролл симптомов течки: проверяем анатомию М-Омеги или Ж-Омеги
+        phaseKey = (settings.gender === 'male_omega') ? 'heat_male' : 'heat_female';
+    }
 
     if (phaseKey) data.currentSymptoms = getRandomSymptoms(phaseKey, 3);
     else data.currentSymptoms = [];
@@ -450,7 +460,6 @@ function updatePromptInjection(isImmediateBirth = false) {
         }
         if (data.currentSymptoms?.length > 0) prompt += `Current Physical Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
         
-        // ОБНОВЛЕННАЯ СТРОГАЯ ИНСТРУКЦИЯ С ЗАПРЕТОМ НА ПРЕЖДЕВРЕМЕННЫЙ ВЫВОД ТЕГОВ
         prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has EXPLICITLY occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
         Choose exactly one that matches the finished action and write it verbatim:
         - If ejaculation has fully completed inside the vagina: <!-- SYSTEM_CHECK: vaginal -->
@@ -464,6 +473,8 @@ function updatePromptInjection(isImmediateBirth = false) {
 
 function renderUI() {
     const data = getChatBodyData();
+    
+    // Пересчет симптомов с учетом новой омега-логики перед выводом на экран
     updateSymptomsData(data);
     checkPregnancyComplications(data);
 
@@ -696,7 +707,6 @@ function renderUI() {
         bodyData.currentSymptoms = []; saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.success(getText('toastSaved'));
     });
 
-    // Изменение ручной инициализации
     $('#repro-btn-manual-preg').on('click', function() {
         const bodyData = getChatBodyData();
         const weeks = parseInt($('#repro-manual-weeks').val()) || 0;
