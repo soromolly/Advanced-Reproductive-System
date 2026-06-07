@@ -18,8 +18,6 @@ const DEFAULT_SETTINGS = {
     cycleLength: 28,
     periodDuration: 5,
     chatPregnancyData: {},
-    
-    // Глобальный сквозной счетчик роллов (вне конкретных чатов)
     globalRollsCount: 0 
 };
 
@@ -40,9 +38,6 @@ function createDefaultBodyData() {
         contraception: 'none' 
     };
 }
-
-let settings = Object.assign({}, DEFAULT_SETTINGS);
-let isMenuCollapsed = true; 
 
 const MONTHS = {
     'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3, 'мая': 4, 'июня': 5,
@@ -81,8 +76,6 @@ const TRANSLATIONS = {
         giveBirthBtn: '🔔 ПРИНЯТЬ РОДЫ (Сюжетный триггер)',
         protectionLabel: 'Контрацепция:', protectionNone: 'Без защиты', protectionCondom: 'Презерватив (Барьерный)',
         protectionPills: 'Оральные контрацептивы (КОК)', protectionIud: 'Внутриматочная спираль (ВМС)',
-        
-        // Специфический перевод для счетчика
         globalRollsLabel: 'Всего скрытых проверок на зачатие:'
     },
     en: {
@@ -113,7 +106,6 @@ const TRANSLATIONS = {
         giveBirthBtn: '🔔 GIVE BIRTH (Story Trigger)',
         protectionLabel: 'Contraception:', protectionNone: 'No Protection', protectionCondom: 'Condom (Barrier)',
         protectionPills: 'Oral Contraceptives (Pills)', protectionIud: 'Intrauterine Device (IUD)',
-        
         globalRollsLabel: 'Total hidden conception checks:'
     }
 };
@@ -151,8 +143,6 @@ function loadSettings() {
         extension_settings[EXTENSION_NAME] = Object.assign({}, DEFAULT_SETTINGS);
     }
     settings = extension_settings[EXTENSION_NAME];
-    
-    // Гарантируем, что переменная счетчика существует в старых сохранениях настроек
     if (settings.globalRollsCount === undefined) settings.globalRollsCount = 0;
 
     const data = getChatBodyData();
@@ -315,6 +305,9 @@ function advanceBodyTime(days) {
     }
 }
 
+/**
+ * РАСШИРЕННЫЙ ЛИТЕРАТУРНЫЙ ФИКС ДЛЯ ДЕТЕКЦИИ АКТа И СЕМЯИЗВЕРЖЕНИЯ
+ */
 function checkConceptionTrigger(text) {
     const data = getChatBodyData();
     if (data.isPregnant || data.postpartumDays > 0) return;
@@ -322,21 +315,25 @@ function checkConceptionTrigger(text) {
     const lowerText = text.toLowerCase();
     const phase = getBodyPhase();
     
-    const hasVaginal = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vaginal|pussy/i.test(lowerText);
-    const hasAnal = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|butt/i.test(lowerText);
-    const hasEjaculationInside = /кончил внутрь|излил семя внутрь|эякуляция внутрь|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied/i.test(lowerText);
+    // Базовые маркеры проникновения + глубокий художественный парсинг (лоно, нутро, до основания)
+    const hasVaginal = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vaginal|pussy|лоно|нутро|в тебя|внутрь тебя|до самого основания|вбиваясь|втискиваясь/i.test(lowerText);
+    const hasAnal = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|butt|кишку/i.test(lowerText);
+    
+    // МАССИВНЫЙ ЛИТЕРАТУРНЫЙ СЛОВАРЬ ЭЯКУЛЯЦИИ (Ловит спазмы, выплески, жар и заполнение нутра)
+    const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied|содрогаясь от.*спазм|содрогался от.*спазм|содрогаясь в.*спазм|содрогался в.*спазм|заполняя.*жаром|заполняя.*своим жаром|оставить.*себя|отдавал.*всё|отдал.*всё|изливая.*внутрь|излился внутрь|потоки жара|горячая струя|горячим жаром|выплеснул.*внутрь|извержение жара/i.test(lowerText);
 
     let isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     let canConceive = false;
 
-    if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginal && hasEjaculationInside) canConceive = true;
-    else if (settings.mode === 'omegaverse' && hasEjaculationInside) {
-        if (settings.gender === 'female_omega' && hasVaginal) canConceive = true;
-        else if (settings.gender === 'male_omega' && hasAnal) canConceive = true;
+    // Сверяем условия залёта по выбранной анатомии
+    if (settings.mode === 'realism' && settings.gender === 'female' && (hasVaginal || lowerText.includes('нутро') || lowerText.includes('до самого основания')) && hasEjaculationInside) {
+        canConceive = true;
+    } else if (settings.mode === 'omegaverse' && hasEjaculationInside) {
+        if (settings.gender === 'female_omega' && (hasVaginal || lowerText.includes('нутро'))) canConceive = true;
+        else if (settings.gender === 'male_omega' && (hasAnal || lowerText.includes('нутро'))) canConceive = true;
     }
 
     if (canConceive) {
-        // Увеличиваем сквозной счетчик роллов расширения
         settings.globalRollsCount++;
 
         let finalChance = 0;
@@ -353,7 +350,6 @@ function checkConceptionTrigger(text) {
         const rollResult = Math.random() * 100;
         const isSuccessful = rollResult <= finalChance;
 
-        // Отправка системного тоста-уведомления пользователю Таверны с результатом ролла
         if (isSuccessful) {
             toastr.success(`🎲 Кубик на зачатие брошен! Результат: ${rollResult.toFixed(1)}% из ${finalChance}% необходимых. ЗАЧАТИЕ ПРОИЗОШЛО!`);
             triggerPregnancy(data);
@@ -592,7 +588,7 @@ function renderUI() {
             ` : `
                 ${data.postpartumDays === 0 ? `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <label style="font-size: 0.9em; opacity: 0.85;">${getText('cycleDayLabel')}</label>
+                    <label style="font-size: 0.9em; opacity: 0.85;">${getText('cycleDayLabel')} </label>
                     <input type="number" id="repro-input-day" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${data.cycleDay}"/>
                 </div>` : ''}
             `}
@@ -620,7 +616,6 @@ function renderUI() {
 
             <button id="repro-reset" class="menu_button type_danger" style="width: 100%; margin-top: 10px; font-weight: 600;">${getText('resetAllBtn')}</button>
             
-            <!-- ВСТАВКА СКВОЗНОГО СЕРОГО СЧЕТЧИКА РОЛЛОВ (НЕ СБРАСЫВАЕТСЯ И ИГНОРИРУЕТ ПЕРЕКЛЮЧЕНИЯ ЧАТОВ) -->
             <div style="margin-top: 14px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.78em; color: #64748b; text-align: center; font-style: italic; user-select: none;">
                 ${getText('globalRollsLabel')} <span id="repro-global-rolls-count" style="font-weight: bold; font-family: monospace; color: #94a3b8; margin-left: 2px;">${settings.globalRollsCount}</span>
             </div>
@@ -658,7 +653,6 @@ function renderUI() {
         else { arrow.removeClass('fa-chevron-down').addClass('fa-chevron-up'); $('.repro-custom-btn-toggle').css('border-radius', '10px 10px 0 0'); }
     });
 
-    // Изменение селектов
     $('#repro-mode').on('change', function() { settings.mode = $(this).val(); getChatBodyData().currentSymptoms = []; saveSettingsDebounced(); renderUI(); updatePromptInjection(); });
     $('#repro-gender').on('change', function() { settings.gender = $(this).val(); saveSettingsDebounced(); renderUI(); updatePromptInjection(); });
     $('#repro-awareness').on('change', function() { settings.aiAwareness = $(this).val(); saveSettingsDebounced(); renderUI(); updatePromptInjection(); });
@@ -742,4 +736,3 @@ jQuery(async () => {
         });
     }
 });
-
