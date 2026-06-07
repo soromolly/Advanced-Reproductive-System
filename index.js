@@ -162,14 +162,14 @@ function getBodyPhase() {
     const data = getChatBodyData();
     if (data.postpartumDays > 0) return getText('postpartumPhase');
     
-    // ЛОГИКА ТУМАНА ВОЙНЫ: Если беременна, но срок еще не подошел (задержки нет) — показываем Лютеиновую фазу
-    if (data.isPregnant && data.cycleDay <= settings.cycleLength) return getText('follicularLuteal');
+    // ФИКС ТУТ: Скрываем статус только если срок строго равен 0 недель И день цикла меньше лимита.
+    // Если неделя уже 1-я или 19-я, "туман войны" автоматически отключается!
+    if (data.isPregnant && data.pregnancyWeeks === 0 && data.cycleDay <= settings.cycleLength) return getText('follicularLuteal');
     
-    // Если задержка есть
     if (data.isPregnant) return settings.mode === 'realism' ? getText('pregnancy') : getText('pregnancyOmega');
 
     const day = data.cycleDay;
-    if (day > settings.cycleLength) return getText('delayed'); // Задержка не по беременности
+    if (day > settings.cycleLength) return getText('delayed'); 
 
     if (settings.mode === 'realism') {
         if (day <= settings.periodDuration) return getText('menstruation');
@@ -260,7 +260,7 @@ function parseRelativeTimeFromText(text) {
 
         if (unit.startsWith('дн') || unit.startsWith('day')) futureDate.setUTCDate(futureDate.getUTCDate() + count);
         else if (unit.startsWith('нед') || unit.startsWith('week')) futureDate.setUTCDate(futureDate.getUTCDate() + (count * 7));
-        else if (unit.startsWith('мес') || unit.startsWith('month')) futureDate.setUTCMonth(futureDate.getUTCMonth() + count);
+        else if (unit.startsWith('мес') || unit.startsWith('month')) futureDate.setMonth(futureDate.getUTCMonth() + count);
         else if (unit.startsWith('ле') || unit.startsWith('год') || unit.startsWith('year')) futureDate.setUTCFullYear(futureDate.getUTCFullYear() + count);
 
         const totalDays = Math.floor((futureDate - baseDate) / (1000 * 60 * 60 * 24));
@@ -287,7 +287,8 @@ function handleTimeProgression(text) {
     const currentRpDateStr = currentRpDate.toISOString().split('T')[0];
 
     if (data.lastRpDate && data.lastRpDate !== currentRpDateStr) {
-        const daysPassed = Math.floor((currentRpDate - new Date(data.lastRpDate)) / (1000 * 60 * 60 * 24));
+        const previousDate = new Date(data.lastRpDate);
+        const daysPassed = Math.floor((currentRpDate - previousDate) / (1000 * 60 * 60 * 24));
         if (daysPassed > 0) {
             advanceBodyTime(daysPassed);
             checkPregnancyComplications(data);
@@ -348,7 +349,6 @@ function checkConceptionTrigger(text) {
             if (settings.gender === 'male_omega' && isAnalTag) canConceive = true;
         }
     } else {
-        // Логика фолбэка для тех случаев, когда тег не сработал
         const hasVaginal = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vaginal|pussy|лоно|нутро|в тебя|внутрь тебя|до самого основания|вбиваясь|втискиваясь/i.test(lowerText);
         const hasAnal = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|butt|кишку/i.test(lowerText);
         const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied|содрогаясь от.*спазм|содрогался от.*спазм|содрогаясь в.*спазм|содрогался в.*спазм|заполняя.*жаром|заполняя.*своим жаром|оставить.*себя|отдавал.*всё|отдал.*всё|изливая.*внутрь|излился внутрь|потоки жара|горячая струя|горячим жаром|выплеснул.*внутрь|извержение жара|что копил|толчки внутри|изливал внутрь/i.test(lowerText);
@@ -456,7 +456,8 @@ function updatePromptInjection(isImmediateBirth = false) {
         return;
     }
 
-    if (data.isPregnant && data.cycleDay > settings.cycleLength) {
+    // ФИКС ТУТ: ИИ видит статус беременности, если срок больше 0 недель ИЛИ день цикла ушел в задержку
+    if (data.isPregnant && (data.pregnancyWeeks > 0 || data.cycleDay > settings.cycleLength)) {
         prompt += `Status: PREGNANT | Duration: ${data.pregnancyWeeks} weeks.\n`;
         const fetus = getFetusData(data.pregnancyWeeks);
         prompt += `Fetus Size: ${fetus.size} | Maternal Body: ${fetus.belly}. ${fetus.desc}\n`;
@@ -495,7 +496,8 @@ function renderUI() {
     }
 
     let fetusHtml = '';
-    if (data.isPregnant && data.cycleDay > settings.cycleLength) {
+    // ФИКС ТУТ: Разворачиваем плашку плода в UI, если срок больше 0 недель ИЛИ пошли дни задержки
+    if (data.isPregnant && (data.pregnancyWeeks > 0 || data.cycleDay > settings.cycleLength)) {
         const fetus = getFetusData(data.pregnancyWeeks);
         fetusHtml = `<div style="margin: 5px 0 10px 0; padding: 10px; background: rgba(56, 189, 248, 0.1); border-left: 3px solid #38bdf8; border-radius: 4px; text-align: left; font-size: 0.85em; line-height: 1.4;">
             <strong style="font-size: 1.05em; color: #38bdf8; display: block; margin-bottom: 5px;">${getText('fetusTitle')}</strong>
@@ -582,7 +584,7 @@ function renderUI() {
                 ${complicationHtml}
                 ${familyHtml}
 
-                ${(data.isPregnant && data.cycleDay > settings.cycleLength) ? `
+                ${(data.isPregnant && (data.pregnancyWeeks > 0 || data.cycleDay > settings.cycleLength)) ? `
                     <div style="margin-bottom: 4px;"><strong>${getText('termInRp')}</strong> ${data.pregnancyWeeks} ${getText('weeksShort')} ${data.pregnancyDays} ${getText('daysShort')}</div>
                     ${(settings.aiAwareness === 'hidden') ? `
                          <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #a1a1aa; font-style: italic;">
@@ -670,6 +672,23 @@ function renderUI() {
         updatePromptInjection();
     });
 
+    // Изменение ручной прокрутки параметров недели (чтобы принудительно активировать статус)
+    $('#repro-apply-params').on('click', function() {
+        const bodyData = getChatBodyData();
+        settings.cycleLength = parseInt($('#repro-input-cycle').val()) || 28;
+        const manualDateVal = $('#repro-input-rpdate').val();
+        if (manualDateVal) bodyData.lastRpDate = manualDateVal;
+
+        if (bodyData.isPregnant) { 
+            bodyData.pregnancyWeeks = parseInt($('#repro-input-weeks').val()) || 0; 
+            bodyData.pregnancyDays = 0; 
+        } else if (bodyData.postpartumDays === 0) { 
+            bodyData.cycleDay = parseInt($('#repro-input-day').val()) || 1; 
+        }
+
+        bodyData.currentSymptoms = []; saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.success(getText('toastSaved'));
+    });
+
     $('#repro-btn-birth-trigger').off('click').on('click', function() {
         if (confirm("Вы хотите запустить событие родов прямо сейчас в чате?")) { processBirthTrigger(); }
     });
@@ -691,18 +710,6 @@ function renderUI() {
     $('#repro-mode').on('change', function() { settings.mode = $(this).val(); getChatBodyData().currentSymptoms = []; saveSettingsDebounced(); renderUI(); updatePromptInjection(); });
     $('#repro-gender').on('change', function() { settings.gender = $(this).val(); saveSettingsDebounced(); renderUI(); updatePromptInjection(); });
     $('#repro-awareness').on('change', function() { settings.aiAwareness = $(this).val(); saveSettingsDebounced(); renderUI(); updatePromptInjection(); });
-
-    $('#repro-apply-params').on('click', function() {
-        const bodyData = getChatBodyData();
-        settings.cycleLength = parseInt($('#repro-input-cycle').val()) || 28;
-        const manualDateVal = $('#repro-input-rpdate').val();
-        if (manualDateVal) bodyData.lastRpDate = manualDateVal;
-
-        if (bodyData.isPregnant) { bodyData.pregnancyWeeks = parseInt($('#repro-input-weeks').val()) || 0; bodyData.pregnancyDays = 0; }
-        else if (bodyData.postpartumDays === 0) { bodyData.cycleDay = parseInt($('#repro-input-day').val()) || 1; }
-
-        bodyData.currentSymptoms = []; saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.success(getText('toastSaved'));
-    });
 
     $('#repro-btn-manual-preg').on('click', function() {
         const bodyData = getChatBodyData();
