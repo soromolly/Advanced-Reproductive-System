@@ -78,10 +78,8 @@ const TRANSLATIONS = {
         postpartumPhase: 'Восстановление после родов 🩹', newbornTitle: '🍼 Рожденные дети в семье:',
         giveBirthBtn: '🔔 ПРИНЯТЬ РОДЫ (Сюжетный триггер)',
         protectionLabel: 'Контрацепция:', protectionNone: 'Без защиты', protectionCondom: 'Презерватив (Барьерный)',
-        protectionPills: 'Оральные контрацептивы (КОК)', protectionIud: 'Внутриматочная спираль (ВМС)',
+        protectionPills: 'Оральные контрацептивы (КОК)', protectionIud: 'Внутриматочная spiral (ВМС)',
         globalRollsLabel: 'Всего скрытых проверок на зачатие:',
-        
-        // Кнопка принудительного броска кубика
         manualRollBtn: '💦 Зафиксировать акт внутрь (Вручную)'
     },
     en: {
@@ -111,9 +109,8 @@ const TRANSLATIONS = {
         postpartumPhase: 'Postpartum Recovery 🩹', newbornTitle: '🍼 Children in Family:',
         giveBirthBtn: '🔔 GIVE BIRTH (Story Trigger)',
         protectionLabel: 'Contraception:', protectionNone: 'No Protection', protectionCondom: 'Condom (Barrier)',
-        protectionPills: 'Oral Contraceptives (Pills)', protectionIud: 'Intrauterine Device (IUD)',
+        protectionPills: 'Oral Extraconceptives (Pills)', protectionIud: 'Intrauterine Device (IUD)',
         globalRollsLabel: 'Total hidden conception checks:',
-        
         manualRollBtn: '💦 Force Internal Ejaculation (Manual)'
     }
 };
@@ -313,6 +310,9 @@ function advanceBodyTime(days) {
     }
 }
 
+/**
+ * ИСПРАВЛЕННАЯ СИСТЕМА ДЕТЕКЦИИ: ПРИОРЕТЕТ СКРЫТЫХ ТЕГОВ МОДЕЛИ
+ */
 function checkConceptionTrigger(text) {
     const data = getChatBodyData();
     if (data.isPregnant || data.postpartumDays > 0) return;
@@ -320,20 +320,34 @@ function checkConceptionTrigger(text) {
     const lowerText = text.toLowerCase();
     const phase = getBodyPhase();
     
-    const hasVaginal = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vaginal|pussy|лоно|нутро|в тебя|внутрь тебя|до самого основания|вбиваясь|втискиваясь/i.test(lowerText);
-    const hasAnal = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|butt|кишку/i.test(lowerText);
-    
-    // БЛОК РАСШИРЕН ДЛЯ ХУДОЖЕСТВЕННЫХ ОПИСАНИЙ (включает "копил в себе", "толчки внутри", "изливал")
-    const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied|содрогаясь от.*спазм|содрогался от.*спазм|содрогаясь в.*спазм|содрогался в.*спазм|заполняя.*жаром|заполняя.*своим жаром|оставить.*себя|отдавал.*всё|отдал.*всё|изливая.*внутрь|излился внутрь|потоки жара|горячая струя|горячим жаром|выплеснул.*внутрь|извержение жара|что копил|толчки внутри|изливал внутрь/i.test(lowerText);
-
     let isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     let canConceive = false;
 
-    if (settings.mode === 'realism' && settings.gender === 'female' && (hasVaginal || lowerText.includes('нутро') || lowerText.includes('до самого основания') || lowerText.includes('толчки внутри')) && hasEjaculationInside) {
-        canConceive = true;
-    } else if (settings.mode === 'omegaverse' && hasEjaculationInside) {
-        if (settings.gender === 'female_omega' && (hasVaginal || lowerText.includes('нутро') || lowerText.includes('толчки внутри'))) canConceive = true;
-        else if (settings.gender === 'male_omega' && (hasAnal || lowerText.includes('нутро') || lowerText.includes('толчки внутри'))) canConceive = true;
+    // 1. Ищем строгие системные теги, которые ИИ оставляет в самом конце сообщения
+    const isVaginalTag = lowerText.includes('<!-- system_check: vaginal -->');
+    const isAnalTag = lowerText.includes('<!-- system_check: anal -->');
+    const isOralTag = lowerText.includes('<!-- system_check: oral -->');
+
+    if (isVaginalTag || isAnalTag || isOralTag) {
+        // Если тег найден, выполняем строгую анатомическую проверку (орал/анал летят мимо, если не подходят)
+        if (settings.mode === 'realism' && settings.gender === 'female' && isVaginalTag) {
+            canConceive = true;
+        } else if (settings.mode === 'omegaverse') {
+            if (settings.gender === 'female_omega' && isVaginalTag) canConceive = true;
+            if (settings.gender === 'male_omega' && isAnalTag) canConceive = true;
+        }
+    } else {
+        // 2. ФОЛБЕК НА КЛЮЧЕВЫЕ СЛОВА (если тег почему-то не напечатался)
+        const hasVaginal = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vaginal|pussy|лоно|нутро|в тебя|внутрь тебя|до самого основания|вбиваясь|втискиваясь/i.test(lowerText);
+        const hasAnal = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|butt|кишку/i.test(lowerText);
+        const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied|содрогаясь от.*спазм|содрогался от.*спазм|содрогаясь в.*спазм|содрогался в.*спазм|заполняя.*жаром|заполняя.*своим жаром|оставить.*себя|отдавал.*всё|отдал.*всё|изливая.*внутрь|излился внутрь|потоки жара|горячая струя|горячим жаром|выплеснул.*внутрь|извержение жара|что копил|толчки внутри|изливал внутрь/i.test(lowerText);
+
+        if (settings.mode === 'realism' && settings.gender === 'female' && (hasVaginal || lowerText.includes('нутро') || lowerText.includes('до самого основания') || lowerText.includes('толчки внутри')) && hasEjaculationInside && !hasAnal) {
+            canConceive = true;
+        } else if (settings.mode === 'omegaverse' && hasEjaculationInside) {
+            if (settings.gender === 'female_omega' && (hasVaginal || lowerText.includes('нутро') || lowerText.includes('толчки внутри')) && !hasAnal) canConceive = true;
+            else if (settings.gender === 'male_omega' && (hasAnal || lowerText.includes('нутро') || lowerText.includes('толчки внутри')) && !hasVaginal) canConceive = true;
+        }
     }
 
     if (canConceive) {
@@ -442,8 +456,12 @@ function updatePromptInjection(isImmediateBirth = false) {
         }
         if (data.currentSymptoms?.length > 0) prompt += `Current Physical Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
         
-        // ЖЕСТКАЯ ДИРЕКТИВА ДЛЯ ИИ: ДИКТУЕМ ПРАВИЛА ОПИСАНИЯ ОРГАЗМА И ЭЯКУЛЯЦИИ
-        prompt += `🚨 CRITICAL WRITING DIRECTIVE FOR {{char}}: During descriptive intimacy or orgasm scenes, if {{char}} releases or ejaculates inside {{user}}, {{char}} MUST explicitly include stable anchoring text markers such as "излил семя внутрь", "кончил внутрь", "эякуляция внутрь нутра", "изливал внутрь лона", or "выплеснул весь свой жар внутрь". Do not rely solely on highly abstract, vague or spiritual phrases. Clear, grounded physiological tracking is mandatory for synchronization.\n`;
+        // СТРОГАЯ ИНСТРУКЦИЯ ДЛЯ ВЫВОДА СКРЫТОГО ТЕГА ПОД КРАСНЫМ ФЛАГОМ
+        prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: Analyze the outcome of the ongoing scene. At the absolute end of your response text, you MUST append a hidden HTML comment summary for synchronization. Choose exactly one that matches the scene context and write it verbatim:
+        - If ejaculation happened inside the vagina: <!-- SYSTEM_CHECK: vaginal -->
+        - If ejaculation happened inside the anus: <!-- SYSTEM_CHECK: anal -->
+        - If ejaculation happened inside the mouth/oral: <!-- SYSTEM_CHECK: oral -->
+        Do not add any text inside or after the comment block. It must be the final characters of your response.\n`;
     }
 
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
@@ -497,7 +515,7 @@ function renderUI() {
     if (data.childrenList?.length > 0) {
         familyHtml = `<div style="margin: 10px 0; padding: 10px; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 6px; text-align: left; font-size: 0.85em;">
             <strong style="color: #f472b6; display: block; margin-bottom: 6px;">${getText('newbornTitle')}</strong>
-            ${data.childrenList.map((c, i) => `<div style="margin-bottom: 4px;">👶 Ребенок ${i+1}: <b>${c.gender}</b> (Глаза: <span style="color: #38bdf8;">${c.eyes}</span>, Волосы: <span style="color: #fbbf24;">${c.hair}</span>)</div>`).join('')}
+            ${data.childrenList.map((c, i) => `<div style="margin-bottom: 4px;">👶 Ребенок ${i+1}: <b>${c.gender}</b> (Глаза: <span style="color: #38bdf8;">${c.eyes}</span>,  Волосы: <span style="color: #fbbf24;">${c.hair}</span>)</div>`).join('')}
         </div>`;
     }
 
@@ -572,12 +590,10 @@ function renderUI() {
                 <div style="font-size: 0.85em; color: #64748b; margin-top: 6px;">📅 ${getText('sync')} ${displayDate}</div>
             </div>
 
-            <!-- СЮЖЕТНАЯ КНОПКА РОДОВ ДЛЯ БЕРЕМЕННЫХ -->
             ${data.isPregnant ? `
                 <button id="repro-btn-birth-trigger" class="menu_button" style="width: 100%; background: #10b981; color: white; font-weight: 700; margin-bottom: 10px; padding: 8px 0; justify-content: center;">${getText('giveBirthBtn')}</button>
             ` : ''}
 
-            <!-- ФЕЙЛСЕЙФ КНОПКА: РУЧНОЙ БРОСОК КУБИКА НА ЗАЧАТИЕ (ЕСЛИ БОТ ПИШЕТ СЛИШКОМ СЛОЖНО) -->
             ${(!data.isPregnant && data.postpartumDays === 0) ? `
                 <button id="repro-btn-manual-roll" class="menu_button" style="width: 100%; background: #3b82f6; color: white; font-weight: 600; margin-bottom: 12px; padding: 6px 0; justify-content: center; font-size: 0.85em;">${getText('manualRollBtn')}</button>
             ` : ''}
@@ -641,9 +657,8 @@ function renderUI() {
     }
     container.html(html);
 
-    // Клик по ручной кнопке симулирует идеальный триггер эякуляции
     $('#repro-btn-manual-roll').off('click').on('click', function() {
-        checkConceptionTrigger("излил семя внутрь изливал внутрь лона толчки внутри");
+        checkConceptionTrigger("<!-- system_check: vaginal -->");
     });
 
     $('#repro-contraception').off('change').on('change', function() {
