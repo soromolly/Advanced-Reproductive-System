@@ -78,7 +78,7 @@ const TRANSLATIONS = {
         postpartumPhase: 'Восстановление после родов 🩹', newbornTitle: '🍼 Рожденные дети в семье:',
         giveBirthBtn: '🔔 ПРИНЯТЬ РОДЫ (Сюжетный триггер)',
         protectionLabel: 'Контрацепция:', protectionNone: 'Без защиты', protectionCondom: 'Презерватив (Барьерный)',
-        protectionPills: 'Оральные контрацептивы (КОК)', protectionIud: 'Внутриматочная spiral (ВМС)',
+        protectionPills: 'Оральные контрацептивы (КОК)', protectionIud: 'Внутриматочная спираль (ВМС)',
         globalRollsLabel: 'Всего скрытых проверок на зачатие:',
         manualRollBtn: '💦 Зафиксировать акт внутрь (Вручную)'
     },
@@ -310,9 +310,6 @@ function advanceBodyTime(days) {
     }
 }
 
-/**
- * ИСПРАВЛЕННАЯ СИСТЕМА ДЕТЕКЦИИ: ПРИОРЕТЕТ СКРЫТЫХ ТЕГОВ МОДЕЛИ
- */
 function checkConceptionTrigger(text) {
     const data = getChatBodyData();
     if (data.isPregnant || data.postpartumDays > 0) return;
@@ -323,13 +320,11 @@ function checkConceptionTrigger(text) {
     let isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     let canConceive = false;
 
-    // 1. Ищем строгие системные теги, которые ИИ оставляет в самом конце сообщения
     const isVaginalTag = lowerText.includes('<!-- system_check: vaginal -->');
     const isAnalTag = lowerText.includes('<!-- system_check: anal -->');
     const isOralTag = lowerText.includes('<!-- system_check: oral -->');
 
     if (isVaginalTag || isAnalTag || isOralTag) {
-        // Если тег найден, выполняем строгую анатомическую проверку (орал/анал летят мимо, если не подходят)
         if (settings.mode === 'realism' && settings.gender === 'female' && isVaginalTag) {
             canConceive = true;
         } else if (settings.mode === 'omegaverse') {
@@ -337,7 +332,6 @@ function checkConceptionTrigger(text) {
             if (settings.gender === 'male_omega' && isAnalTag) canConceive = true;
         }
     } else {
-        // 2. ФОЛБЕК НА КЛЮЧЕВЫЕ СЛОВА (если тег почему-то не напечатался)
         const hasVaginal = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vaginal|pussy|лоно|нутро|в тебя|внутрь тебя|до самого основания|вбиваясь|втискиваясь/i.test(lowerText);
         const hasAnal = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|butt|кишку/i.test(lowerText);
         const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied|содрогаясь от.*спазм|содрогался от.*спазм|содрогаясь в.*спазм|содрогался в.*спазм|заполняя.*жаром|заполняя.*своим жаром|оставить.*себя|отдавал.*всё|отдал.*всё|изливая.*внутрь|излился внутрь|потоки жара|горячая струя|горячим жаром|выплеснул.*внутрь|извержение жара|что копил|толчки внутри|изливал внутрь/i.test(lowerText);
@@ -456,12 +450,13 @@ function updatePromptInjection(isImmediateBirth = false) {
         }
         if (data.currentSymptoms?.length > 0) prompt += `Current Physical Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
         
-        // СТРОГАЯ ИНСТРУКЦИЯ ДЛЯ ВЫВОДА СКРЫТОГО ТЕГА ПОД КРАСНЫМ ФЛАГОМ
-        prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: Analyze the outcome of the ongoing scene. At the absolute end of your response text, you MUST append a hidden HTML comment summary for synchronization. Choose exactly one that matches the scene context and write it verbatim:
-        - If ejaculation happened inside the vagina: <!-- SYSTEM_CHECK: vaginal -->
-        - If ejaculation happened inside the anus: <!-- SYSTEM_CHECK: anal -->
-        - If ejaculation happened inside the mouth/oral: <!-- SYSTEM_CHECK: oral -->
-        Do not add any text inside or after the comment block. It must be the final characters of your response.\n`;
+        // ОБНОВЛЕННАЯ СТРОГАЯ ИНСТРУКЦИЯ С ЗАПРЕТОМ НА ПРЕЖДЕВРЕМЕННЫЙ ВЫВОД ТЕГОВ
+        prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has EXPLICITLY occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
+        Choose exactly one that matches the finished action and write it verbatim:
+        - If ejaculation has fully completed inside the vagina: <!-- SYSTEM_CHECK: vaginal -->
+        - If ejaculation has fully completed inside the anus: <!-- SYSTEM_CHECK: anal -->
+        - If ejaculation has fully completed inside the mouth/oral: <!-- SYSTEM_CHECK: oral -->
+        ⚠️ STRICTION LIMITATION: If the intimacy or sex scene is just beginning, ongoing, or represents foreplay WITHOUT actual completed ejaculation yet, you MUST NOT append any comment tag. Leave the end of the text clean. Do not add text after the comment.\n`;
     }
 
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
@@ -515,7 +510,7 @@ function renderUI() {
     if (data.childrenList?.length > 0) {
         familyHtml = `<div style="margin: 10px 0; padding: 10px; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 6px; text-align: left; font-size: 0.85em;">
             <strong style="color: #f472b6; display: block; margin-bottom: 6px;">${getText('newbornTitle')}</strong>
-            ${data.childrenList.map((c, i) => `<div style="margin-bottom: 4px;">👶 Ребенок ${i+1}: <b>${c.gender}</b> (Глаза: <span style="color: #38bdf8;">${c.eyes}</span>,  Волосы: <span style="color: #fbbf24;">${c.hair}</span>)</div>`).join('')}
+            ${data.childrenList.map((c, i) => `<div style="margin-bottom: 4px;">👶 Ребенок ${i+1}: <b>${c.gender}</b> (Глаза: <span style="color: #38bdf8;">${c.eyes}</span>, Волосы: <span style="color: #fbbf24;">${c.hair}</span>)</div>`).join('')}
         </div>`;
     }
 
@@ -701,6 +696,7 @@ function renderUI() {
         bodyData.currentSymptoms = []; saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.success(getText('toastSaved'));
     });
 
+    // Изменение ручной инициализации
     $('#repro-btn-manual-preg').on('click', function() {
         const bodyData = getChatBodyData();
         const weeks = parseInt($('#repro-manual-weeks').val()) || 0;
