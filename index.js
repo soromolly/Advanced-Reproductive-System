@@ -73,6 +73,7 @@ const TRANSLATIONS = {
         pregnancy: 'Беременность 🤰', pregnancyOmega: 'Беременность (Омега) 🤰',
         menstruation: 'Менструация 🩸', ovulation: 'Овуляция (Окно зачатия) ✨',
         follicularLuteal: 'Фолликулярная/Лютеиновая фаза', heat: 'Течка (Пик фертильности) 🔥', quiescence: 'Период покоя',
+        delayed: 'Задержка цикла ⚠️',
         symptomsTitle: '🎯 Симптомы организма:', fetusTitle: '👶 Развитие плода и тела:',
         complicationTitle: '⚠️ Медицинское осложнение:', cureBtn: '💊 Провести лечение / Облегчить симптом',
         postpartumPhase: 'Восстановление после родов 🩹', newbornTitle: '🍼 Рожденные дети в семье:',
@@ -103,8 +104,9 @@ const TRANSLATIONS = {
         pregnancy: 'Pregnancy 🤰', pregnancyOmega: 'Pregnancy (Omega) 🤰',
         menstruation: 'Menstruation 🩸', ovulation: 'Ovulation (Conception Window) ✨',
         follicularLuteal: 'Follicular/Luteal Phase', heat: 'Heat (Peak Fertility) 🔥', quiescence: 'Quiescence Period',
+        delayed: 'Cycle Delayed ⚠️',
         symptomsTitle: '🎯 Body Symptoms:', fetusTitle: '👶 Fetus & Body Development:',
-        complicationTitle: '⚠️ Medical Complication:', cureBtn: '💊 Treat / Almacen Complication',
+        complicationTitle: '⚠️ Medical Complication:', cureBtn: '💊 Treat / Alleviate Complication',
         postpartumPhase: 'Postpartum Recovery 🩹', newbornTitle: '🍼 Children in Family:',
         giveBirthBtn: '🔔 GIVE BIRTH (Story Trigger)',
         protectionLabel: 'Contraception:', protectionNone: 'No Protection', protectionCondom: 'Condom (Barrier)',
@@ -159,9 +161,16 @@ function loadSettings() {
 function getBodyPhase() {
     const data = getChatBodyData();
     if (data.postpartumDays > 0) return getText('postpartumPhase');
+    
+    // ЛОГИКА ТУМАНА ВОЙНЫ: Если беременна, но срок еще не подошел (задержки нет) — показываем Лютеиновую фазу
+    if (data.isPregnant && data.cycleDay <= settings.cycleLength) return getText('follicularLuteal');
+    
+    // Если задержка есть
     if (data.isPregnant) return settings.mode === 'realism' ? getText('pregnancy') : getText('pregnancyOmega');
 
     const day = data.cycleDay;
+    if (day > settings.cycleLength) return getText('delayed'); // Задержка не по беременности
+
     if (settings.mode === 'realism') {
         if (day <= settings.periodDuration) return getText('menstruation');
         if (day >= 11 && day <= 16) return getText('ovulation');
@@ -182,13 +191,9 @@ function updateSymptomsData(data) {
     const phase = getBodyPhase();
     let phaseKey = null;
     
-    if (phase === getText('menstruation')) {
-        phaseKey = 'menstruation';
-    } else if (phase === getText('ovulation')) {
-        phaseKey = 'ovulation';
-    } else if (phase === getText('heat')) {
-        phaseKey = (settings.gender === 'male_omega') ? 'heat_male' : 'heat_female';
-    }
+    if (phase === getText('menstruation')) phaseKey = 'menstruation';
+    else if (phase === getText('ovulation')) phaseKey = 'ovulation';
+    else if (phase === getText('heat')) phaseKey = (settings.gender === 'male_omega') ? 'heat_male' : 'heat_female';
 
     if (phaseKey) data.currentSymptoms = getRandomSymptoms(phaseKey, 3);
     else data.currentSymptoms = [];
@@ -215,7 +220,6 @@ function checkPregnancyComplications(data) {
     }
 }
 
-// ФИКС ТУТ: Принудительный парсинг в формате UTC, чтобы дата не откатывалась назад из-за таймзон
 function parseRpDateFromText(text) {
     if (!text) return null;
     const textRegex = /(\d{1,2})\s+([a-zA-Zа-яёА-ЯЁ]+)\s+(\d{4})/i;
@@ -283,8 +287,7 @@ function handleTimeProgression(text) {
     const currentRpDateStr = currentRpDate.toISOString().split('T')[0];
 
     if (data.lastRpDate && data.lastRpDate !== currentRpDateStr) {
-        const previousDate = new Date(data.lastRpDate);
-        const daysPassed = Math.floor((currentRpDate - previousDate) / (1000 * 60 * 60 * 24));
+        const daysPassed = Math.floor((currentRpDate - new Date(data.lastRpDate)) / (1000 * 60 * 60 * 24));
         if (daysPassed > 0) {
             advanceBodyTime(daysPassed);
             checkPregnancyComplications(data);
@@ -333,9 +336,9 @@ function checkConceptionTrigger(text) {
     let isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     let canConceive = false;
 
-    const isVaginalTag = lowerText.includes('');
-    const isAnalTag = lowerText.includes('');
-    const isOralTag = lowerText.includes('');
+    const isVaginalTag = lowerText.includes('<!-- system_check: vaginal -->');
+    const isAnalTag = lowerText.includes('<!-- system_check: anal -->');
+    const isOralTag = lowerText.includes('<!-- system_check: oral -->');
 
     if (isVaginalTag || isAnalTag || isOralTag) {
         if (settings.mode === 'realism' && settings.gender === 'female' && isVaginalTag) {
@@ -345,6 +348,7 @@ function checkConceptionTrigger(text) {
             if (settings.gender === 'male_omega' && isAnalTag) canConceive = true;
         }
     } else {
+        // Логика фолбэка для тех случаев, когда тег не сработал
         const hasVaginal = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vaginal|pussy|лоно|нутро|в тебя|внутрь тебя|до самого основания|вбиваясь|втискиваясь/i.test(lowerText);
         const hasAnal = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|butt|кишку/i.test(lowerText);
         const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied|содрогаясь от.*спазм|содрогался от.*спазм|содрогаясь в.*спазм|содрогался в.*спазм|заполняя.*жаром|заполняя.*своим жаром|оставить.*себя|отдавал.*всё|отдал.*всё|изливая.*внутрь|излился внутрь|потоки жара|горячая струя|горячим жаром|выплеснул.*внутрь|извержение жара|что копил|толчки внутри|изливал внутрь/i.test(lowerText);
@@ -452,7 +456,7 @@ function updatePromptInjection(isImmediateBirth = false) {
         return;
     }
 
-    if (data.isPregnant) {
+    if (data.isPregnant && data.cycleDay > settings.cycleLength) {
         prompt += `Status: PREGNANT | Duration: ${data.pregnancyWeeks} weeks.\n`;
         const fetus = getFetusData(data.pregnancyWeeks);
         prompt += `Fetus Size: ${fetus.size} | Maternal Body: ${fetus.belly}. ${fetus.desc}\n`;
@@ -465,7 +469,10 @@ function updatePromptInjection(isImmediateBirth = false) {
         
         prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has EXPLICITLY occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
         Choose exactly one that matches the finished action and write it verbatim:
-        - If ejaculation has fully completed inside the vagina: - If ejaculation has fully completed inside the anus: - If ejaculation has fully completed inside the mouth/oral: ⚠️ STRICTION LIMITATION: If the intimacy or sex scene is just beginning, ongoing, or represents foreplay WITHOUT actual completed ejaculation yet, you MUST NOT append any comment tag. Leave the end of the text clean. Do not add text after the comment.\n`;
+        - If ejaculation has fully completed inside the vagina: <!-- SYSTEM_CHECK: vaginal -->
+        - If ejaculation has fully completed inside the anus: <!-- SYSTEM_CHECK: anal -->
+        - If ejaculation has fully completed inside the mouth/oral: <!-- SYSTEM_CHECK: oral -->
+        ⚠️ STRICTION LIMITATION: You MUST only append this tag at the very end when the action is truly COMPLETE and the climax has happened. Do not include this tag for foreplay or ongoing descriptions. Do not append if no climax/ejaculation occurs.\n`;
     }
 
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
@@ -488,7 +495,7 @@ function renderUI() {
     }
 
     let fetusHtml = '';
-    if (data.isPregnant) {
+    if (data.isPregnant && data.cycleDay > settings.cycleLength) {
         const fetus = getFetusData(data.pregnancyWeeks);
         fetusHtml = `<div style="margin: 5px 0 10px 0; padding: 10px; background: rgba(56, 189, 248, 0.1); border-left: 3px solid #38bdf8; border-radius: 4px; text-align: left; font-size: 0.85em; line-height: 1.4;">
             <strong style="font-size: 1.05em; color: #38bdf8; display: block; margin-bottom: 5px;">${getText('fetusTitle')}</strong>
@@ -575,7 +582,7 @@ function renderUI() {
                 ${complicationHtml}
                 ${familyHtml}
 
-                ${data.isPregnant ? `
+                ${(data.isPregnant && data.cycleDay > settings.cycleLength) ? `
                     <div style="margin-bottom: 4px;"><strong>${getText('termInRp')}</strong> ${data.pregnancyWeeks} ${getText('weeksShort')} ${data.pregnancyDays} ${getText('daysShort')}</div>
                     ${(settings.aiAwareness === 'hidden') ? `
                          <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #a1a1aa; font-style: italic;">
