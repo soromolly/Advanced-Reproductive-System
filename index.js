@@ -77,7 +77,7 @@ const TRANSLATIONS = {
         follicularLuteal: 'Фолликулярная/Лютеиновая фаза', heat: 'Течка (Пик фертильности) 🔥', quiescence: 'Период покоя',
         delayed: 'Задержка цикла ⚠️',
         symptomsTitle: '🎯 Симптомы организма:', fetusTitle: '👶 Развитие плода и тела:',
-        complicationTitle: '⚠️ Медицинское осложнение:', cureBtn: '💊 Провести лечение / Облигчить симптом',
+        complicationTitle: '⚠️ Медицинское осложнение:', cureBtn: '💊 Провести лечение / Облегчить симптом',
         postpartumPhase: 'Восстановление после родов 🩹', newbornTitle: '🍼 Рожденные дети в семье:',
         giveBirthBtn: '🔔 ПРИНЯТЬ РОДЫ (Сюжетный триггер)',
         protectionLabel: 'Контрацепция:', protectionNone: 'Без защиты', protectionCondom: 'Презерватив (Барьерный)',
@@ -344,14 +344,10 @@ function advanceBodyTime(days) {
     }
 }
 
-/**
- * ОБНОВЛЕННЫЙ ТРИГГЕР РОДОВ И ЗАЧАТИЯ
- */
 function checkConceptionTrigger(text) {
     const data = getChatBodyData();
     const lowerText = text.toLowerCase();
 
-    // ПЕРЕХВАТ ТЕГОВ РОДОРАЗРЕШЕНИЯ ОТ ИИ[cite: 4]
     const isBirthNaturalTag = lowerText.includes('<!-- system_check: birth_natural -->');
     const isBirthCSectionTag = lowerText.includes('<!-- system_check: birth_c_section -->');
 
@@ -439,9 +435,6 @@ function triggerPregnancy(data) {
     saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.success(getText('toastConception'));
 }
 
-/**
- * ИСПРАВЛЕННЫЙ СКРИПТ АВТОМАТИЗАЦИИ РОДОВ[cite: 4]
- */
 function processBirthTrigger(method = 'natural') {
     const data = getChatBodyData();
     if (!data.isPregnant) return;
@@ -460,14 +453,14 @@ function processBirthTrigger(method = 'natural') {
     data.pregnancyWeeks = 0; data.pregnancyDays = 0; data.babiesCount = 0; data.babiesGenders = []; data.activeComplication = null;
     data.hiddenGenetics = [];
     data.postpartumDays = 1; 
-    data.deliveryMethod = method; // Фиксируем тип операции/родов[cite: 4]
+    data.deliveryMethod = method; 
 
     updatePromptInjection(); 
     saveSettingsDebounced();
     renderUI();
     
     const methodText = method === 'c_section' ? 'Кесарево сечение' : 'Естественные роды';
-    toastr.success(`👶 Роды успешно прошли! Способ: ${methodText}. Статистика беременности сброшена, запущен период восстановления.`);[cite: 4]
+    toastr.success(`👶 Роды успешно прошли! Способ: ${methodText}. Статистика беременности сброшена, запущен период восстановления.`);
 }
 
 function updatePromptInjection(isImmediateBirth = false) {
@@ -487,8 +480,8 @@ function updatePromptInjection(isImmediateBirth = false) {
 
     if (data.postpartumDays > 0) {
         const pData = getPostpartumData(data.postpartumDays, data.deliveryMethod);
-        prompt += `Status: POSTPARTUM RECOVERY (Day ${data.postpartumDays}/40) | Delivery Method: ${data.deliveryMethod.toUpperCase()}\n`;[cite: 4]
-        prompt += `Physical Condition & Limitations: ${pData.desc}\n`;[cite: 4]
+        prompt += `Status: POSTPARTUM RECOVERY (Day ${data.postpartumDays}/40) | Delivery Method: ${data.deliveryMethod.toUpperCase()}\n`;
+        prompt += `Physical Condition & Limitations: ${pData.desc}\n`;
         setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
         return;
     }
@@ -503,12 +496,11 @@ function updatePromptInjection(isImmediateBirth = false) {
             prompt += `Current Pregnancy Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
         }
 
-        // ДИРЕКТИВА ДЛЯ ИИ НА РОДЫ ПРИ ДОСТИЖЕНИИ СРОКА[cite: 4]
         if (data.pregnancyWeeks >= maxWeeks) {
             prompt += `🚨 CRITICAL INSTRUCTION: {{user}} has reached full term (${data.pregnancyWeeks} weeks) and is GIVING BIRTH RIGHT NOW in this very post! You MUST write the delivery scene. At the absolute end of your response text, you MUST append exactly one hidden HTML comment indicating how the birth went based on the context:
             - If it was a conventional vaginal/natural delivery: <!-- system_check: birth_natural -->
             - If it required a surgical planned or emergency Cesarean section: <!-- system_check: birth_c_section -->
-            Do not add any text or code after this comment tag.\n`;[cite: 4]
+            Do not add any text or code after this comment tag.\n`;
         }
 
         let revealCount = (settings.aiAwareness === 'full') || (settings.aiAwareness === 'dynamic' && data.pregnancyWeeks >= 12);
@@ -586,7 +578,6 @@ function renderUI() {
         }
     }
 
-    // ДИНАМИЧЕСКИЕ РЕКОМЕНДАЦИИ ПОСЛЕ РОДОВ (ЕР / КС)[cite: 4]
     let postpartumHtml = '';
     if (data.postpartumDays > 0) {
         const pData = getPostpartumData(data.postpartumDays, data.deliveryMethod);
@@ -594,7 +585,7 @@ function renderUI() {
         
         postpartumHtml = `<div style="margin: 5px 0 10px 0; padding: 10px; background: rgba(16, 185, 129, 0.1); border-left: 3px solid #10b981; border-radius: 4px; text-align: left; font-size: 0.85em; line-height: 1.4;">
             <strong style="font-size: 1.05em; color: #10b981; display: block; margin-bottom: 4px;">Послеродовое состояние (День ${data.postpartumDays}/40)</strong>
-            <b>Тип родоразрешения:</b> <span style="color: #10b981; font-weight: bold;">${isCS ? 'Кесарево сечение (КС)' : 'Естественные роды (ЕР)'}</span><br>[cite: 4]
+            <b>Тип родоразрешения:</b> <span style="color: #10b981; font-weight: bold;">${isCS ? 'Кесарево сечение (КС)' : 'Естественные роды (ЕР)'}</span><br>
             <b>Стадия:</b> <span>${pData.name}</span><br>
             <span style="opacity: 0.85; display: block; margin-top: 4px; font-style: italic;">${pData.desc}</span>
             
@@ -612,7 +603,7 @@ function renderUI() {
                     • Чаще прикладывайте малыша к груди — это естественным образом стимулирует сокращение матки.
                 `}
             </div>
-        </div>`;[cite: 4]
+        </div>`;
     }
 
     let complicationHtml = '';
@@ -797,7 +788,6 @@ function renderUI() {
         bodyData.currentSymptoms = []; saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.success(getText('toastSaved'));
     });
 
-    // Изменение ручного клика по родам (добавлено меню выбора типа операции)
     $('#repro-btn-birth-trigger').off('click').on('click', function() {
         const method = confirm("Выполнить родоразрешение путем операции Кесарева сечения (КС)? [ОК - Кесарево, Отмена - Естественные роды]") ? 'c_section' : 'natural';
         processBirthTrigger(method);
