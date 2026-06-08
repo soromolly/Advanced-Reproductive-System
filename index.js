@@ -347,63 +347,42 @@ function advanceBodyTime(days) {
 function checkConceptionTrigger(text) {
     const data = getChatBodyData();
     
-    const birthNaturalRegex = /^$/i;
-    const birthCSectionRegex = /^$/i;
+    // 1. ПРОВЕРКА НА РОДЫ (Исключительно скрытые теги ИИ)
+    if (data.isPregnant) {
+        const isBirthNatural = /<!--DELIVERY_NATURAL-->/i.test(text);
+        const isBirthCSection = /<!--DELIVERY_CSECTION-->/i.test(text);
 
-    let isBirthNatural = birthNaturalRegex.test(text);
-    let isBirthCSection = birthCSectionRegex.test(text);
-
-    if (data.isPregnant && !isBirthNatural && !isBirthCSection) {
-        const lowerText = text.toLowerCase();
-        const hasBirthKeywords = /родила|родоразрешение|появился на свет|появились на свет|появилась на свет|рождение ребенка|родился малыш|родилась малышка|крик ребенка|крик младенца|перерезать пуповину|новорожденн/i.test(lowerText);
-        const hasCSectionKeywords = /кесарево|кесарева|надрез на животе|разрез на животе|операционн|хирург|разрез матки/i.test(lowerText);
-
-        if (hasBirthKeywords) {
-            if (hasCSectionKeywords) {
-                isBirthCSection = true;
-            } else {
-                isBirthNatural = true;
-            }
+        if (isBirthNatural || isBirthCSection) {
+            const method = isBirthCSection ? 'c_section' : 'natural';
+            processBirthTrigger(method);
+            return;
         }
     }
 
-    if (data.isPregnant && (isBirthNatural || isBirthCSection)) {
-        const method = isBirthCSection ? 'c_section' : 'natural';
-        processBirthTrigger(method);
-        return;
-    }
-
+    // Если уже беременна или в послеродовом периоде — проверки на новое зачатие не запускаются
     if (data.isPregnant || data.postpartumDays > 0) return;
 
+    // 2. ПРОВЕРКА НА ЗАЧАТИЕ (Исключительно по тегам и строго по физиологии)
     const phase = getBodyPhase();
-    let isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
+    const isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
+    
+    const hasVaginalTag = /<!--CUM_VAGINAL-->/i.test(text);
+    const hasAnalTag = /<!--CUM_ANAL-->/i.test(text);
+
     let canConceive = false;
 
-    const vaginalRegex = /^$/i;
-    const analRegex = /^$/i;
-    const oralRegex = /^$/i;
-
-    if (vaginalRegex.test(text) || analRegex.test(text) || oralRegex.test(text)) {
-        if (settings.mode === 'realism' && settings.gender === 'female' && vaginalRegex.test(text)) {
-            canConceive = true;
-        } else if (settings.mode === 'omegaverse') {
-            if (settings.gender === 'female_omega' && vaginalRegex.test(text)) canConceive = true;
-            if (settings.gender === 'male_omega' && analRegex.test(text)) canConceive = true;
-        }
-    } else {
-        const lowerText = text.toLowerCase();
-        const hasVaginal = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vaginal|pussy|лоно|нутро|в тебя|внутрь тебя|до самого основания|вбиваясь|втискиваясь/i.test(lowerText);
-        const hasAnal = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|butt|кишку/i.test(lowerText);
-        const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied|содрогаясь от.*спазм|содрогался от.*спазм|содрогаясь в.*спазм|содрогался в.*спазм|заполняя.*жаром|заполняя.*своим жаром|оставить.*себя|отдавал.*всё|отдал.*всё|изливая.*внутрь|излился внутрь|потоки жара|горячая струя|горячим жаром|выплеснул.*внутрь|извержение жара/i.test(lowerText);
-
-        if (settings.mode === 'realism' && settings.gender === 'female' && (hasVaginal || lowerText.includes('нутро') || lowerText.includes('до самого основания') || lowerText.includes('толчки внутри')) && hasEjaculationInside && !hasAnal) {
-            canConceive = true;
-        } else if (settings.mode === 'omegaverse' && hasEjaculationInside) {
-            if (settings.gender === 'female_omega' && (hasVaginal || lowerText.includes('нутро') || lowerText.includes('толчки внутри')) && !hasAnal) canConceive = true;
-            if (settings.gender === 'male_omega' && (hasAnal || lowerText.includes('нутро') || lowerText.includes('толчки внутри')) && !hasVaginal) canConceive = true;
+    // Анатомический фильтр условий зачатия
+    if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalTag) {
+        canConceive = true; // Реализм, Женщина — только вагинально
+    } else if (settings.mode === 'omegaverse') {
+        if (settings.gender === 'female_omega' && hasVaginalTag) {
+            canConceive = true; // Омегаверс, Ж-Омега — только вагинально
+        } else if (settings.gender === 'male_omega' && hasAnalTag) {
+            canConceive = true; // Омегаверс, М-Омега — только анально
         }
     }
 
+    // Если тег подошел под анатомию текущего режима — крутим кубик
     if (canConceive) {
         settings.globalRollsCount++;
 
@@ -527,8 +506,8 @@ function updatePromptInjection(isImmediateBirth = false) {
         if (data.pregnancyWeeks >= maxWeeks) {
             prompt += `\n[🚨 CRITICAL MANDATORY SYSTEM DIRECTIVE FOR {{char}}]:\n`;
             prompt += `{{user}} has reached full term (${data.pregnancyWeeks} weeks) and the labor/delivery process is happening RIGHT NOW! You MUST completely write and describe the scene of childbirth and delivery of the babies. At the absolute end of your response text, after all dialogue and descriptions, you MUST append exactly one hidden HTML comment specifying the delivery method based on how the labor went:\n`;
-            prompt += `- For conventional vaginal/natural delivery, append: \n`;
-            prompt += `- For surgical planned or emergency Cesarean section, append: \n`;
+            prompt += `- For conventional vaginal/natural delivery, append: <!--DELIVERY_NATURAL-->\n`;
+            prompt += `- For surgical planned or emergency Cesarean section, append: <!--DELIVERY_CSECTION-->\n`;
             prompt += `⚠️ STRICT LIMITATION: Do not omit this tag under any circumstances. Place it verbatim at the very end of your response text.\n`;
         }
     } else {
@@ -540,7 +519,10 @@ function updatePromptInjection(isImmediateBirth = false) {
         
         prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has explicitly occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
         Choose exactly one that matches the finished action and write it verbatim:
-        - If ejaculation has fully completed inside the vagina: - If ejaculation has fully completed inside the anus: - If ejaculation has fully completed inside the mouth/oral: ⚠️ STRICTION LIMITATION: You MUST only append this tag at the very end when the action is truly COMPLETE and the climax has happened. Do not include this tag for foreplay or ongoing descriptions. Do not append if no climax/ejaculation occurs.\n`;
+        - If ejaculation has fully completed inside the vagina: <!--CUM_VAGINAL-->
+        - If ejaculation has fully completed inside the anus: <!--CUM_ANAL-->
+        - If ejaculation has fully completed inside the mouth/oral: <!--CUM_ORAL-->
+        ⚠️ STRICTION LIMITATION: You MUST only append this tag at the very end when the action is truly COMPLETE and the climax has happened. Do not include this tag for foreplay or ongoing descriptions. Do not append if no climax/ejaculation occurs.\n`;
     }
 
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
