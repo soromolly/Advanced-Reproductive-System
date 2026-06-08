@@ -12,6 +12,7 @@ const EXTENSION_NAME = 'st-advanced-reproductive-system';
 
 const DEFAULT_SETTINGS = {
     isEnabled: true,
+    isNotificationsEnabled: true, // Галочка для всплывающих уведомлений
     mode: 'realism',       
     gender: 'female',      
     aiAwareness: 'dynamic', 
@@ -157,6 +158,7 @@ function loadSettings() {
     settings = extension_settings[EXTENSION_NAME];
     if (settings.globalRollsCount === undefined) settings.globalRollsCount = 0;
     if (settings.maxPregnancyWeeks === undefined) settings.maxPregnancyWeeks = 40;
+    if (settings.isNotificationsEnabled === undefined) settings.isNotificationsEnabled = true;
 
     const data = getChatBodyData();
     updateSymptomsData(data);
@@ -230,7 +232,9 @@ function checkPregnancyComplications(data) {
     if (data.activeComplication && !data.activeComplication.isDiscovered) {
         if (currentWeek >= data.activeComplication.triggerWeek) {
             data.activeComplication.isDiscovered = true;
-            toastr.error(`🚨 Осложнение беременности: Обнаружен «${data.activeComplication.name}»!`);
+            if (settings.isNotificationsEnabled) {
+                toastr.error(`🚨 Осложнение беременности: Обнаружен «${data.activeComplication.name}»!`);
+            }
         }
     }
 }
@@ -307,7 +311,9 @@ function handleTimeProgression(text) {
         if (daysPassed > 0) {
             advanceBodyTime(daysPassed);
             checkPregnancyComplications(data);
-            toastr.info(`${getText('toastTimePassed')}${daysPassed}.`);
+            if (settings.isNotificationsEnabled) {
+                toastr.info(`${getText('toastTimePassed')}${daysPassed}.`);
+            }
         }
     }
     data.lastRpDate = currentRpDateStr;
@@ -323,18 +329,19 @@ function advanceBodyTime(days) {
             data.postpartumDays = 0;
             data.deliveryMethod = 'none';
             data.cycleDay = 1; 
-            toastr.success("Послеродовое восстановление завершено. Репродуктивный цикл запущен.");
+            if (settings.isNotificationsEnabled) {
+                toastr.success("Послеродовое восстановление завершено. Репродуктивный цикл запущен.");
+            }
         }
         return;
     }
 
     if (data.isPregnant) {
-        // УГРОЗА ВЫКИДЫША: за каждый прошедший день считаем шанс реального срыва
         if (data.activeComplication && data.activeComplication.id === 'miscarriage_threat_early' && data.activeComplication.isDiscovered) {
             for (let i = 0; i < days; i++) {
-                if (Math.random() * 100 < 10) { // 10% шанс в день потерять плод, если не нажать лечение
+                if (Math.random() * 100 < 10) { 
                     processMiscarriageTrigger();
-                    return; // Полностью прерываем дальнейший обсчёт беременности
+                    return; 
                 }
             }
         }
@@ -346,7 +353,9 @@ function advanceBodyTime(days) {
         }
         data.currentSymptoms = []; 
         const maxWeeks = settings.maxPregnancyWeeks || (settings.mode === 'omegaverse' ? 36 : 40);
-        if (data.pregnancyWeeks >= maxWeeks) toastr.warning(getText('toastPregEnd'));
+        if (data.pregnancyWeeks >= maxWeeks && settings.isNotificationsEnabled) {
+            toastr.warning(getText('toastPregEnd'));
+        }
     } else {
         data.cycleDay += days;
         if (data.cycleDay > settings.cycleLength) data.cycleDay = ((data.cycleDay - 1) % settings.cycleLength) + 1;
@@ -356,20 +365,17 @@ function advanceBodyTime(days) {
 
 function checkConceptionTrigger(text) {
     const data = getChatBodyData();
-    
-    // Если уже беременна или в послеродовом периоде — проверки на новое зачатие не запускаются.
     if (data.isPregnant || data.postpartumDays > 0) return;
 
     const lowerText = text.toLowerCase();
     const phase = getBodyPhase();
     const isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     
-    const hasVaginalTag = /<!--CUM_VAGINAL-->/i.test(text);
-    const hasAnalTag = /<!--CUM_ANAL-->/i.test(text);
+    const hasVaginalTag = //i.test(text);
+    const hasAnalTag = //i.test(text);
 
     let canConceive = false;
 
-    // А) Сначала смотрим на скрытые теги эякуляции
     if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalTag) {
         canConceive = true;
     } else if (settings.mode === 'omegaverse') {
@@ -377,7 +383,6 @@ function checkConceptionTrigger(text) {
         if (settings.gender === 'male_omega' && hasAnalTag) canConceive = true;
     }
 
-    // Б) Если тегов нет, включаем жесткую текстовую подстраховку строго по физиологии
     if (!canConceive && !hasVaginalTag && !hasAnalTag) {
         const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция внутрь|залил внутрь|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|излился внутрь|выплеснул внутрь/i.test(lowerText);
         
@@ -412,10 +417,14 @@ function checkConceptionTrigger(text) {
         const isSuccessful = rollResult <= finalChance;
 
         if (isSuccessful) {
-            toastr.success(`🎲 Кубик на зачатие брошен! Результат: ${rollResult.toFixed(1)}% из ${finalChance}% необходимых. ЗАЧАТИЕ ПРОИЗОШЛО!`);
+            if (settings.isNotificationsEnabled) {
+                toastr.success(`🎲 Кубик на зачатие брошен! Результат: ${rollResult.toFixed(1)}% из ${finalChance}% необходимых. ЗАЧАТИЕ ПРОИЗОШЛО!`);
+            }
             triggerPregnancy(data);
         } else {
-            toastr.info(`🎲 Кубик на зачатие брошен! Результат: ${rollResult.toFixed(1)}% (требовалось меньше или равно ${finalChance}%). Мимо.`);
+            if (settings.isNotificationsEnabled) {
+                toastr.info(`🎲 Кубик на зачатие брошен! Результат: ${rollResult.toFixed(1)}% (требовалось меньше или равно ${finalChance}%). Мимо.`);
+            }
             saveSettingsDebounced();
             renderUI();
         }
@@ -437,7 +446,10 @@ function triggerPregnancy(data) {
         data.babiesGenders.push(Math.random() > 0.5 ? (lang === 'ru' ? 'Мальчик ♂' : 'Boy ♂') : (lang === 'ru' ? 'Девочка ♀' : 'Girl ♀'));
     }
 
-    saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.success(getText('toastConception'));
+    saveSettingsDebounced(); renderUI(); updatePromptInjection(); 
+    if (settings.isNotificationsEnabled) {
+        toastr.success(getText('toastConception'));
+    }
 }
 
 function processBirthTrigger(method = 'natural') {
@@ -461,10 +473,11 @@ function processBirthTrigger(method = 'natural') {
     renderUI();
     
     const methodText = method === 'c_section' ? 'Кесарево сечение' : 'Естественные роды';
-    toastr.success(`👶 Роды успешно прошли! Способ: ${methodText}. Статистика беременности сброшена, запущен период восстановления.`);
+    if (settings.isNotificationsEnabled) {
+        toastr.success(`👶 Роды успешно прошли! Способ: ${methodText}. Статистика беременности сброшена, запущен период восстановления.`);
+    }
 }
 
-// Функция критического прерывания беременности при выкидыше
 function processMiscarriageTrigger() {
     const data = getChatBodyData();
     data.isPregnant = false;
@@ -474,13 +487,15 @@ function processMiscarriageTrigger() {
     data.babiesGenders = [];
     data.activeComplication = null;
     data.postpartumDays = 1;
-    data.deliveryMethod = 'miscarriage'; // Переключаем систему стадий на ветку выкидыша
+    data.deliveryMethod = 'miscarriage'; 
 
     updatePromptInjection(); 
     saveSettingsDebounced();
     renderUI();
     
-    toastr.error(`🚨 КРИТИЧЕСКОЕ СОБЫТИЕ: Из-за сильного ухудшения состояния произошел спонтанный выкидыш. Беременность прервана.`);
+    if (settings.isNotificationsEnabled) {
+        toastr.error(`🚨 КРИТИЧЕСКОЕ СОБЫТИЕ: Из-за сильного ухудшения состояния произошел спонтанный выкидыш. Беременность прервана.`);
+    }
 }
 
 function updatePromptInjection(isImmediateBirth = false) {
@@ -546,10 +561,7 @@ function updatePromptInjection(isImmediateBirth = false) {
         
         prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has explicitly occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
         Choose exactly one that matches the finished action and write it verbatim:
-        - If ejaculation has fully completed inside the vagina: <!--CUM_VAGINAL-->
-        - If ejaculation has fully completed inside the anus: <!--CUM_ANAL-->
-        - If ejaculation has fully completed inside the mouth/oral: <!--CUM_ORAL-->
-        ⚠️ STRICTION LIMITATION: You MUST only append this tag at the very end when the action is truly COMPLETE and the climax has happened. Do not include this tag for foreplay or ongoing descriptions. Do not append if no climax/ejaculation occurs.\n`;
+        - If ejaculation has fully completed inside the vagina: - If ejaculation has fully completed inside the anus: - If ejaculation has fully completed inside the mouth/oral: ⚠️ STRICTION LIMITATION: You MUST only append this tag at the very end when the action is truly COMPLETE and the climax has happened. Do not include this tag for foreplay or ongoing descriptions. Do not append if no climax/ejaculation occurs.\n`;
     }
 
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
@@ -654,129 +666,143 @@ function renderUI() {
         </div>
         
         <div id="repro-content-wrapper" style="${isMenuCollapsed ? 'display: none;' : 'display: block;'} background: rgba(0, 0, 0, 0.15); border: 1px solid var(--input-border, #334155); border-top: none; border-radius: 0 0 10px 10px; padding: 14px; box-sizing: border-box;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">${getText('system')}</label>
-                <select id="repro-mode" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;">
-                    <option value="realism" ${settings.mode === 'realism' ? 'selected' : ''}>${getText('realism')}</option>
-                    <option value="omegaverse" ${settings.mode === 'omegaverse' ? 'selected' : ''}>${getText('omegaverse')}</option>
-                </select>
+            
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px dashed rgba(255,255,255,0.1); text-align: left;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="repro-is-enabled" ${settings.isEnabled ? 'checked' : ''} style="cursor: pointer; width: 15px; height: 15px; margin: 0;"/>
+                    <label for="repro-is-enabled" style="font-size: 0.9em; cursor: pointer; user-select: none; font-weight: 600; color: var(--text-color, #f8fafc);">Включить расширение</label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="repro-is-notifications-enabled" ${settings.isNotificationsEnabled ? 'checked' : ''} style="cursor: pointer; width: 15px; height: 15px; margin: 0;"/>
+                    <label for="repro-is-notifications-enabled" style="font-size: 0.9em; cursor: pointer; user-select: none; opacity: 0.8; color: var(--text-color, #f8fafc);">Показывать уведомления</label>
+                </div>
             </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">${getText('physiology')}</label>
-                <select id="repro-gender" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;">
-                    <option value="female" ${settings.gender === 'female' ? 'selected' : ''}>${getText('female')}</option>
-                    <option value="female_omega" ${settings.gender === 'female_omega' ? 'selected' : ''}>${getText('female_omega')}</option>
-                    <option value="male_omega" ${settings.gender === 'male_omega' ? 'selected' : ''}>${getText('male_omega')}</option>
-                </select>
-            </div>
+            <div id="repro-options-panel" style="display: flex; flex-direction: column; opacity: ${settings.isEnabled ? '1' : '0.35'}; pointer-events: ${settings.isEnabled ? 'auto' : 'none'}; transition: opacity 0.15s;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="font-size: 0.9em; opacity: 0.85;">${getText('system')}</label>
+                    <select id="repro-mode" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;">
+                        <option value="realism" ${settings.mode === 'realism' ? 'selected' : ''}>${getText('realism')}</option>
+                        <option value="omegaverse" ${settings.mode === 'omegaverse' ? 'selected' : ''}>${getText('omegaverse')}</option>
+                    </select>
+                </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">${getText('aiLogic')}</label>
-                <select id="repro-awareness" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;">
-                    <option value="dynamic" ${settings.aiAwareness === 'dynamic' ? 'selected' : ''}>${getText('ultrasound')}</option>
-                    <option value="hidden" ${settings.aiAwareness === 'hidden' ? 'selected' : ''}>${getText('medieval')}</option>
-                    <option value="full" ${settings.aiAwareness === 'full' ? 'selected' : ''}>${getText('knowsAll')}</option>
-                </select>
-            </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="font-size: 0.9em; opacity: 0.85;">${getText('physiology')}</label>
+                    <select id="repro-gender" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;">
+                        <option value="female" ${settings.gender === 'female' ? 'selected' : ''}>${getText('female')}</option>
+                        <option value="female_omega" ${settings.gender === 'female_omega' ? 'selected' : ''}>${getText('female_omega')}</option>
+                        <option value="male_omega" ${settings.gender === 'male_omega' ? 'selected' : ''}>${getText('male_omega')}</option>
+                    </select>
+                </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">${getText('protectionLabel')}</label>
-                <select id="repro-contraception" ${data.isPregnant || data.postpartumDays > 0 ? 'disabled' : ''} style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none; opacity: ${data.isPregnant || data.postpartumDays > 0 ? '0.5' : '1'};">
-                    <option value="none" ${data.contraception === 'none' ? 'selected' : ''}>${getText('protectionNone')}</option>
-                    <option value="condom" ${data.contraception === 'condom' ? 'selected' : ''}>${getText('protectionom')}</option>
-                    <option value="pills" ${data.contraception === 'pills' ? 'selected' : ''}>${getText('protectionPills')}</option>
-                    <option value="iud" ${data.contraception === 'iud' ? 'selected' : ''}>${getText('protectionIud')}</option>
-                </select>
-            </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="font-size: 0.9em; opacity: 0.85;">${getText('aiLogic')}</label>
+                    <select id="repro-awareness" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;">
+                        <option value="dynamic" ${settings.aiAwareness === 'dynamic' ? 'selected' : ''}>${getText('ultrasound')}</option>
+                        <option value="hidden" ${settings.aiAwareness === 'hidden' ? 'selected' : ''}>${getText('medieval')}</option>
+                        <option value="full" ${settings.aiAwareness === 'full' ? 'selected' : ''}>${getText('knowsAll')}</option>
+                    </select>
+                </div>
 
-            <div style="background: rgba(0, 0, 0, 0.25); border-left: 3px solid #f472b6; border-radius: 4px; padding: 10px; margin: 12px 0; font-size: 0.9em; text-align: left;">
-                <div style="margin-bottom: 4px;"><strong>${settings.mode === 'realism' ? getText('phaseRealism') : getText('phaseOmega')}</strong> <span style="color: #4ade80; font-weight: 700;">${getBodyPhase()}</span></div>
-                
-                ${symptomsHtml}
-                ${fetusHtml}
-                ${postpartumHtml}
-                ${complicationHtml}
-                ${familyHtml}
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="font-size: 0.9em; opacity: 0.85;">${getText('protectionLabel')}</label>
+                    <select id="repro-contraception" ${data.isPregnant || data.postpartumDays > 0 ? 'disabled' : ''} style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none; opacity: ${data.isPregnant || data.postpartumDays > 0 ? '0.5' : '1'};">
+                        <option value="none" ${data.contraception === 'none' ? 'selected' : ''}>${getText('protectionNone')}</option>
+                        <option value="condom" ${data.contraception === 'condom' ? 'selected' : ''}>${getText('protectionom')}</option>
+                        <option value="pills" ${data.contraception === 'pills' ? 'selected' : ''}>${getText('protectionPills')}</option>
+                        <option value="iud" ${data.contraception === 'iud' ? 'selected' : ''}>${getText('protectionIud')}</option>
+                    </select>
+                </div>
 
-                ${(data.isPregnant && (data.pregnancyWeeks > 0 || data.cycleDay > settings.cycleLength)) ? `
-                    <div style="margin-bottom: 4px;"><strong>${getText('termInRp')}</strong> ${data.pregnancyWeeks} ${getText('weeksShort')} ${data.pregnancyDays} ${getText('daysShort')}</div>
-                    ${eddHtml}
+                <div style="background: rgba(0, 0, 0, 0.25); border-left: 3px solid #f472b6; border-radius: 4px; padding: 10px; margin: 12px 0; font-size: 0.9em; text-align: left;">
+                    <div style="margin-bottom: 4px;"><strong>${settings.mode === 'realism' ? getText('phaseRealism') : getText('phaseOmega')}</strong> <span style="color: #4ade80; font-weight: 700;">${getBodyPhase()}</span></div>
+                    
+                    ${symptomsHtml}
+                    ${fetusHtml}
+                    ${postpartumHtml}
+                    ${complicationHtml}
+                    ${familyHtml}
 
-                    ${(settings.aiAwareness === 'hidden') ? `
-                         <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #a1a1aa; font-style: italic;">
-                            🔒 Режим Средневековье: пол младенца скрыт до момента родов.
-                         </div>
+                    ${(data.isPregnant && (data.pregnancyWeeks > 0 || data.cycleDay > settings.cycleLength)) ? `
+                        <div style="margin-bottom: 4px;"><strong>${getText('termInRp')}</strong> ${data.pregnancyWeeks} ${getText('weeksShort')} ${data.pregnancyDays} ${getText('daysShort')}</div>
+                        ${eddHtml}
+
+                        ${(settings.aiAwareness === 'hidden') ? `
+                             <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #a1a1aa; font-style: italic;">
+                                🔒 Режим Средневековье: пол младенца скрыт до момента родов.
+                             </div>
+                        ` : `
+                            <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #f472b6;">
+                                ℹ️ <em>${getText('wombMap')}</em><br>
+                                • ${getText('babiesCount')} <b>${data.babiesCount}</b><br>
+                                • ${getText('babiesSex')} <b>${data.babiesGenders.join(', ')}</b>
+                            </div>
+                        `}
                     ` : `
-                        <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #f472b6;">
-                            ℹ️ <em>${getText('wombMap')}</em><br>
-                            • ${getText('babiesCount')} <b>${data.babiesCount}</b><br>
-                            • ${getText('babiesSex')} <b>${data.babiesGenders.join(', ')}</b>
-                        </div>
+                        ${data.postpartumDays === 0 ? `<div style="margin-bottom: 4px;"><strong>${getText('cycleDayLabel')}</strong> ${data.cycleDay} из ${settings.cycleLength}</div>` : ''}
                     `}
+                    <div style="font-size: 0.85em; color: #64748b; margin-top: 6px;">📅 ${getText('sync')} ${displayDate}</div>
+                </div>
+
+                ${data.isPregnant ? `
+                    <button id="repro-btn-birth-trigger" class="menu_button" style="width: 100%; background: #10b981; color: white; font-weight: 700; margin-bottom: 10px; padding: 8px 0; justify-content: center;">${getText('giveBirthBtn')}</button>
+                ` : ''}
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="font-size: 0.9em; opacity: 0.85;">${getText('rpDateLabel')}</label>
+                    <input type="date" id="repro-input-rpdate" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${data.lastRpDate || ''}"/>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="font-size: 0.9em; opacity: 0.85;">${getText('cycleLengthLabel')}</label>
+                    <input type="number" id="repro-input-cycle" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${settings.cycleLength}"/>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="font-size: 0.9em; opacity: 0.85;">${getText('maxWeeksLabel')}</label>
+                    <input type="number" id="repro-input-maxweeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${settings.maxPregnancyWeeks || 40}" min="1" max="50"/>
+                </div>
+                
+                ${data.isPregnant ? `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <label style="font-size: 0.9em; opacity: 0.85;">${getText('pregnancyWeekLabel')}</label>
+                        <input type="number" id="repro-input-weeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${data.pregnancyWeeks}"/>
+                    </div>
                 ` : `
-                    ${data.postpartumDays === 0 ? `<div style="margin-bottom: 4px;"><strong>${getText('cycleDayLabel')}</strong> ${data.cycleDay} из ${settings.cycleLength}</div>` : ''}
+                    ${data.postpartumDays === 0 ? `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <label style="font-size: 0.9em; opacity: 0.85;">${getText('cycleDayLabel')} </label>
+                        <input type="number" id="repro-input-day" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${data.cycleDay}"/>
+                    </div>` : ''}
                 `}
-                <div style="font-size: 0.85em; color: #64748b; margin-top: 6px;">📅 ${getText('sync')} ${displayDate}</div>
-            </div>
 
-            ${data.isPregnant ? `
-                <button id="repro-btn-birth-trigger" class="menu_button" style="width: 100%; background: #10b981; color: white; font-weight: 700; margin-bottom: 10px; padding: 8px 0; justify-content: center;">${getText('giveBirthBtn')}</button>
-            ` : ''}
+                <button id="repro-apply-params" class="menu_button type_primary" style="width: 100%; margin-top: 10px; font-weight: 600;">${getText('applyBtn')}</button>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">${getText('rpDateLabel')}</label>
-                <input type="date" id="repro-input-rpdate" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${data.lastRpDate || ''}"/>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">${getText('cycleLengthLabel')}</label>
-                <input type="number" id="repro-input-cycle" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${settings.cycleLength}"/>
-            </div>
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="font-size: 0.9em; opacity: 0.85;">${getText('maxWeeksLabel')}</label>
-                <input type="number" id="repro-input-maxweeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${settings.maxPregnancyWeeks || 40}" min="1" max="50"/>
-            </div>
-            
-            ${data.isPregnant ? `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <label style="font-size: 0.9em; opacity: 0.85;">${getText('pregnancyWeekLabel')}</label>
-                    <input type="number" id="repro-input-weeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${data.pregnancyWeeks}"/>
-                </div>
-            ` : `
-                ${data.postpartumDays === 0 ? `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <label style="font-size: 0.9em; opacity: 0.85;">${getText('cycleDayLabel')} </label>
-                    <input type="number" id="repro-input-day" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="${data.cycleDay}"/>
-                </div>` : ''}
-            `}
-
-            <button id="repro-apply-params" class="menu_button type_primary" style="width: 100%; margin-top: 10px; font-weight: 600;">${getText('applyBtn')}</button>
-
-            ${(!data.isPregnant && data.postpartumDays === 0) ? `
-                <div style="background: rgba(244, 114, 182, 0.03); border: 1px dashed rgba(244, 114, 182, 0.2); border-radius: 8px; padding: 12px; margin: 14px 0 10px 0; text-align: left;">
-                    <div style="font-size: 0.85em; font-weight: 700; color: #f472b6; margin-bottom: 8px; text-transform: uppercase;">${getText('initPregnancyHeader')}</div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <label style="font-size: 0.9em; opacity: 0.85;">${getText('manualWeeks')}</label>
-                        <input type="number" id="repro-manual-weeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="4" min="0" max="40"/>
+                ${(!data.isPregnant && data.postpartumDays === 0) ? `
+                    <div style="background: rgba(244, 114, 182, 0.03); border: 1px dashed rgba(244, 114, 182, 0.2); border-radius: 8px; padding: 12px; margin: 14px 0 10px 0; text-align: left;">
+                        <div style="font-size: 0.85em; font-weight: 700; color: #f472b6; margin-bottom: 8px; text-transform: uppercase;">${getText('initPregnancyHeader')}</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <label style="font-size: 0.9em; opacity: 0.85;">${getText('manualWeeks')}</label>
+                            <input type="number" id="repro-manual-weeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="4" min="0" max="40"/>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <label style="font-size: 0.9em; opacity: 0.85;">${getText('manualCount')} </label>
+                            <input type="number" id="repro-manual-count" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="1" min="1" max="3"/>
+                        </div>
+                        <button id="repro-btn-manual-preg" class="menu_button" style="width: 100%; background: #db2777; color: white; font-weight: 600;">${getText('startPregnancyBtn')}</button>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <label style="font-size: 0.9em; opacity: 0.85;">${getText('manualCount')}</label>
-                        <input type="number" id="repro-manual-count" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;" value="1" min="1" max="3"/>
-                    </div>
-                    <button id="repro-btn-manual-preg" class="menu_button" style="width: 100%; background: #db2777; color: white; font-weight: 600;">${getText('startPregnancyBtn')}</button>
+                ` : ''}
+
+                ${data.isPregnant ? `
+                    <button id="repro-reset-pregnancy-only" class="menu_button type_warning" style="width: 100%; margin-top: 10px; font-weight: 600;">${getText('resetPregnancyBtn')}</button>
+                ` : ''}
+
+                <button id="repro-reset" class="menu_button type_danger" style="width: 100%; margin-top: 10px; font-weight: 600;">${getText('resetAllBtn')}</button>
+                
+                <div style="margin-top: 14px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.78em; color: #64748b; text-align: center; font-style: italic; user-select: none;">
+                    ${getText('globalRollsLabel')} <span id="repro-global-rolls-count" style="font-weight: bold; font-family: monospace; color: #94a3b8; margin-left: 2px;">${settings.globalRollsCount}</span>
                 </div>
-            ` : ''}
-
-            ${data.isPregnant ? `
-                <button id="repro-reset-pregnancy-only" class="menu_button type_warning" style="width: 100%; margin-top: 10px; font-weight: 600;">${getText('resetPregnancyBtn')}</button>
-            ` : ''}
-
-            <button id="repro-reset" class="menu_button type_danger" style="width: 100%; margin-top: 10px; font-weight: 600;">${getText('resetAllBtn')}</button>
-            
-            <div style="margin-top: 14px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.78em; color: #64748b; text-align: center; font-style: italic; user-select: none;">
-                ${getText('globalRollsLabel')} <span id="repro-global-rolls-count" style="font-weight: bold; font-family: monospace; color: #94a3b8; margin-left: 2px;">${settings.globalRollsCount}</span>
             </div>
         </div>
     `;
@@ -787,6 +813,19 @@ function renderUI() {
         $('#extensions_settings').append(container);
     }
     container.html(html);
+
+    // Слушатели новых галочек управления
+    $('#repro-is-enabled').off('change').on('change', function() {
+        settings.isEnabled = $(this).is(':checked');
+        saveSettingsDebounced();
+        updatePromptInjection();
+        renderUI(); 
+    });
+
+    $('#repro-is-notifications-enabled').off('change').on('change', function() {
+        settings.isNotificationsEnabled = $(this).is(':checked');
+        saveSettingsDebounced();
+    });
 
     $('#repro-contraception').off('change').on('change', function() {
         data.contraception = $(this).val();
@@ -809,7 +848,8 @@ function renderUI() {
             bodyData.cycleDay = parseInt($('#repro-input-day').val()) || 1; 
         }
 
-        bodyData.currentSymptoms = []; saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.success(getText('toastSaved'));
+        bodyData.currentSymptoms = []; saveSettingsDebounced(); renderUI(); updatePromptInjection(); 
+        if (settings.isNotificationsEnabled) toastr.success(getText('toastSaved'));
     });
 
     $('#repro-btn-birth-trigger').off('click').on('click', function() {
@@ -819,7 +859,7 @@ function renderUI() {
 
     $('#repro-cure-complication').off('click').on('click', function() {
         if (data.activeComplication) {
-            toastr.success(`Успешно купировано: ${data.activeComplication.name}`);
+            if (settings.isNotificationsEnabled) toastr.success(`Успешно купировано: ${data.activeComplication.name}`);
             data.activeComplication = null; saveSettingsDebounced(); renderUI(); updatePromptInjection();
         }
     });
@@ -850,7 +890,8 @@ function renderUI() {
             bodyData.babiesGenders.push(Math.random() > 0.5 ? (lang === 'ru' ? 'Мальчик ♂' : 'Boy ♂') : (lang === 'ru' ? 'Девочка ♀' : 'Girl ♀'));
         }
 
-        saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.success(`${getText('toastManualPreg')}${weeks}`);
+        saveSettingsDebounced(); renderUI(); updatePromptInjection(); 
+        if (settings.isNotificationsEnabled) toastr.success(`${getText('toastManualPreg')}${weeks}`);
     });
 
     $('#repro-reset-pregnancy-only').on('click', function() {
@@ -859,14 +900,16 @@ function renderUI() {
         bodyData.rolledTrimesters = { 1: false, 2: false, 3: false }; bodyData.activeComplication = null;
         bodyData.deliveryMethod = 'none';
 
-        saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.info(getText('toastResetPreg'));
+        saveSettingsDebounced(); renderUI(); updatePromptInjection(); 
+        if (settings.isNotificationsEnabled) toastr.info(getText('toastResetPreg'));
     });
 
     $('#repro-reset').on('click', function() {
         if (confirm("Вы уверены, что хотите полностью очистить данные этого чата?")) {
             const chatId = getCurrentChatId();
             settings.chatPregnancyData[chatId] = createDefaultBodyData();
-            saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.warning(getText('warningResetAll'));
+            saveSettingsDebounced(); renderUI(); updatePromptInjection(); 
+            if (settings.isNotificationsEnabled) toastr.warning(getText('warningResetAll'));
         }
     });
 }
@@ -876,6 +919,7 @@ jQuery(async () => {
     if (typeof eventSource?.on === 'function') { eventSource.on('i18n_language_changed', () => { renderUI(); }); }
 
     eventSource.on(event_types.MESSAGE_SENT, async (messageIndex) => {
+        if (!settings.isEnabled) return; // Расширение полностью отключено, ничего не обсчитываем
         const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
         const chat = context ? context.chat : window.chat;
         if (!chat || !chat[messageIndex]) return;
@@ -887,6 +931,7 @@ jQuery(async () => {
     });
 
     eventSource.on(event_types.MESSAGE_RECEIVED, async (messageIndex) => {
+        if (!settings.isEnabled) return; // Расширение полностью отключено, ничего не обсчитываем
         const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
         const chat = context ? context.chat : window.chat;
         if (!chat || !chat[messageIndex]) return;
