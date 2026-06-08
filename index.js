@@ -81,7 +81,7 @@ const TRANSLATIONS = {
         postpartumPhase: 'Восстановление после родов 🩹', newbornTitle: '🍼 Рожденные дети в семье:',
         giveBirthBtn: '🔔 ПРИНЯТЬ РОДЫ (Сюжетный триггер)',
         protectionLabel: 'Контрацепция:', protectionNone: 'Без защиты', protectionCondom: 'Презерватив (Барьерный)',
-        protectionPills: 'Оральные контрацептивы (КОК)', protectionIud: 'Внутриматочная спираль (ВМС)',
+        protectionPills: 'Оральные контрацептивы (КОК)', protectionIud: 'Внутриматочная spiral (ВМС)',
         globalRollsLabel: 'Всего скрытых проверок на зачатие:',
         eddLabel: '📅 ПДР (Дата родов):',
         maxWeeksLabel: 'Срок беременности (нед):'
@@ -344,22 +344,18 @@ function advanceBodyTime(days) {
     }
 }
 
-/**
- * ИСПРАВЛЕННЫЙ ТРИГГЕР: ПЕРЕХОД НА УМНЫЙ REGEX ДЛЯ ПОИСКА ТЕГОВ РОДОВ
- */
 function checkConceptionTrigger(text) {
     const data = getChatBodyData();
     
-    // Гибкие регулярные выражения вместо хрупкого .includes()
-    const birthNaturalRegex = /<!--\s*system_check:\s*birth_natural\s*-->/i;[cite: 4]
-    const birthCSectionRegex = /<!--\s*system_check:\s*birth_c_section\s*-->/i;[cite: 4]
+    const birthNaturalRegex = /<!--\s*system_check:\s*birth_natural\s*-->/i;
+    const birthCSectionRegex = /<!--\s*system_check:\s*birth_c_section\s*-->/i;
 
-    const isBirthNatural = birthNaturalRegex.test(text);[cite: 4]
-    const isBirthCSection = birthCSectionRegex.test(text);[cite: 4]
+    const isBirthNatural = birthNaturalRegex.test(text);
+    const isBirthCSection = birthCSectionRegex.test(text);
 
-    if (data.isPregnant && (isBirthNatural || isBirthCSection)) {[cite: 4]
-        const method = isBirthCSection ? 'c_section' : 'natural';[cite: 4]
-        processBirthTrigger(method);[cite: 4]
+    if (data.isPregnant && (isBirthNatural || isBirthCSection)) {
+        const method = isBirthCSection ? 'c_section' : 'natural';
+        processBirthTrigger(method);
         return;
     }
 
@@ -369,7 +365,6 @@ function checkConceptionTrigger(text) {
     let isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     let canConceive = false;
 
-    // Гибкие регулярные выражения для климакса/зачатия
     const vaginalRegex = /<!--\s*system_check:\s*vaginal\s*-->/i;
     const analRegex = /<!--\s*system_check:\s*anal\s*-->/i;
     const oralRegex = /<!--\s*system_check:\s*oral\s*-->/i;
@@ -471,9 +466,6 @@ function processBirthTrigger(method = 'natural') {
     toastr.success(`👶 Роды успешно прошли! Способ: ${methodText}. Статистика беременности сброшена, запущен период восстановления.`);
 }
 
-/**
- * ИСПРАВЛЕННЫЙ БЛОК ИНЪЕКЦИИ: ВЫНОС СИСТЕМНОЙ ДИРЕКТИВЫ ИЗ ОБЩИХ ОИС-ЛОГОВ
- */
 function updatePromptInjection(isImmediateBirth = false) {
     if (!settings.isEnabled) { setExtensionPrompt(EXTENSION_NAME, '', extension_prompt_types.IN_CHAT, 0); return; }
     const data = getChatBodyData();
@@ -527,13 +519,12 @@ function updatePromptInjection(isImmediateBirth = false) {
             prompt += `[SECRET DATA]: Ultrasound screening has not occurred yet. The total headcount of babies and their genders are completely unknown to {{char}} right now.\n`;
         }
 
-        // ФИКС ВНИМАНИЯ ИИ: Выносим директиву форматирования в изолированный блок, чтобы модель железно её выполнила
-        if (data.pregnancyWeeks >= maxWeeks) {[cite: 4]
-            prompt += `\n[🚨 CRITICAL MANDATORY SYSTEM DIRECTIVE FOR {{char}}]:\n`;[cite: 4]
-            prompt += `{{user}} has reached full term (${data.pregnancyWeeks} weeks) and the labor/delivery process is happening RIGHT NOW! You MUST completely write and describe the scene of childbirth and delivery of the babies. At the absolute end of your response text, after all dialogue and descriptions, you MUST append exactly one hidden HTML comment specifying the delivery method based on how the labor went:\n`;[cite: 4]
-            prompt += `- For conventional vaginal/natural delivery, append: <!-- system_check: birth_natural -->\n`;[cite: 4]
-            prompt += `- For surgical planned or emergency Cesarean section, append: <!-- system_check: birth_c_section -->\n`;[cite: 4]
-            prompt += `⚠️ STRICT LIMITATION: Do not omit this tag under any circumstances. Place it verbatim at the very end of your response text.\n`;[cite: 4]
+        if (data.pregnancyWeeks >= maxWeeks) {
+            prompt += `\n[🚨 CRITICAL MANDATORY SYSTEM DIRECTIVE FOR {{char}}]:\n`;
+            prompt += `{{user}} has reached full term (${data.pregnancyWeeks} weeks) and the labor/delivery process is happening RIGHT NOW! You MUST completely write and describe the scene of childbirth and delivery of the babies. At the absolute end of your response text, after all dialogue and descriptions, you MUST append exactly one hidden HTML comment specifying the delivery method based on how the labor went:\n`;
+            prompt += `- For conventional vaginal/natural delivery, append: <!-- system_check: birth_natural -->\n`;
+            prompt += `- For surgical planned or emergency Cesarean section, append: <!-- system_check: birth_c_section -->\n`;
+            prompt += `⚠️ STRICT LIMITATION: Do not omit this tag under any circumstances. Place it verbatim at the very end of your response text.\n`;
         }
     } else {
         prompt += `Current Cycle Day: ${data.cycleDay}/${settings.cycleLength} | Phase: ${phase}\n`;
