@@ -56,7 +56,7 @@ const TRANSLATIONS = {
     ru: {
         title: '🧬 Система Репродукции V2',
         system: 'Система:', realism: 'Реализм', omegaverse: 'ОмегаВерс',
-        physiology: 'Физиология:', female: 'Женщина', female_omega: 'Ж-Омега', male_omega: 'М-Омега',
+        physiology: 'Физиология:', female: 'Женщина', female_omega: 'Ж-Омега', male_omega: 'М-Омеga',
         aiLogic: 'Логика ИИ:', ultrasound: 'УЗИ (20 нед)', medieval: 'Средневековье', knowsAll: 'Знает всё',
         phaseRealism: 'Текущая фаза:', phaseOmega: 'Текущее состояние омеги:',
         termInRp: 'Срок в RP:', weeksShort: 'нед.', daysShort: 'дн.',
@@ -344,9 +344,6 @@ function advanceBodyTime(days) {
     }
 }
 
-/**
- * УМНЫЙ ДВУХКОНТУРНЫЙ ПЕРЕХВАТ РОДОВ (ТЕГИ + СЕМАНТИЧЕСКИЙ АНАЛИЗ ТЕКСТА)
- */
 function checkConceptionTrigger(text) {
     const data = getChatBodyData();
     
@@ -356,7 +353,6 @@ function checkConceptionTrigger(text) {
     let isBirthNatural = birthNaturalRegex.test(text);
     let isBirthCSection = birthCSectionRegex.test(text);
 
-    // УМНЫЙ ФОЛБЭК: Если скрытых тегов нет, но ИИ вовсю описывает роды прямо в тексте поста
     if (data.isPregnant && !isBirthNatural && !isBirthCSection) {
         const lowerText = text.toLowerCase();
         const hasBirthKeywords = /родила|родоразрешение|появился на свет|появились на свет|появилась на свет|рождение ребенка|родился малыш|родилась малышка|крик ребенка|крик младенца|перерезать пуповину|новорожденн/i.test(lowerText);
@@ -371,7 +367,6 @@ function checkConceptionTrigger(text) {
         }
     }
 
-    // Если родовой триггер сработал (через тег или слова) — запускаем процесс!
     if (data.isPregnant && (isBirthNatural || isBirthCSection)) {
         const method = isBirthCSection ? 'c_section' : 'natural';
         processBirthTrigger(method);
@@ -397,7 +392,7 @@ function checkConceptionTrigger(text) {
         }
     } else {
         const lowerText = text.toLowerCase();
-        const hasVaginal = /вагинально|в писю|в киску|внутрь влаalgища|влагалище|vaginal|pussy|лоно|нутро|в тебя|внутрь тебя|до самого основания|вбиваясь|втискиваясь/i.test(lowerText);
+        const hasVaginal = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vaginal|pussy|лоно|нутро|в тебя|внутрь тебя|до самого основания|вбиваясь|втискиваясь/i.test(lowerText);
         const hasAnal = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|butt|кишку/i.test(lowerText);
         const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция|залил|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|tied|содрогаясь от.*спазм|содрогался от.*спазм|содрогаясь в.*спазм|содрогался в.*спазм|заполняя.*жаром|заполняя.*своим жаром|оставить.*себя|отдавал.*всё|отдал.*всё|изливая.*внутрь|излился внутрь|потоки жара|горячая струя|горячим жаром|выплеснул.*внутрь|извержение жара/i.test(lowerText);
 
@@ -405,7 +400,7 @@ function checkConceptionTrigger(text) {
             canConceive = true;
         } else if (settings.mode === 'omegaverse' && hasEjaculationInside) {
             if (settings.gender === 'female_omega' && (hasVaginal || lowerText.includes('нутро') || lowerText.includes('толчки внутри')) && !hasAnal) canConceive = true;
-            else if (settings.gender === 'male_omega' && (hasAnal || lowerText.includes('нутро') || lowerText.includes('толчки внутри')) && !hasVaginal) canConceive = true;
+            if (settings.gender === 'male_omega' && (hasAnal || lowerText.includes('нутро') || lowerText.includes('толчки внутри')) && !hasVaginal) canConceive = true;
         }
     }
 
@@ -552,7 +547,7 @@ function updatePromptInjection(isImmediateBirth = false) {
         }
         if (data.currentSymptoms?.length > 0) prompt += `Current Physical Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
         
-        prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has EXPLICITLY occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
+        prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has explicitly occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
         Choose exactly one that matches the finished action and write it verbatim:
         - If ejaculation has fully completed inside the vagina: - If ejaculation has fully completed inside the anus: - If ejaculation has fully completed inside the mouth/oral: ⚠️ STRICTION LIMITATION: You MUST only append this tag at the very end when the action is truly COMPLETE and the climax has happened. Do not include this tag for foreplay or ongoing descriptions. Do not append if no climax/ejaculation occurs.\n`;
     }
