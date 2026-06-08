@@ -14,7 +14,7 @@ export const SYMPTOMS = {
         "Внезапный прилив сил и энергии",
         "Заметное усиление либидо",
         "Легкое покалывание в боку (овуляторный синдром)",
-        "Обострение обоняния (чувствительность к запахам)",
+        "Обостерение обоняния (чувствительность к запахам)",
         "Улучшение настроения, уверенность в себе",
         "Легкое покалывание в области поясницы"
     ],
@@ -176,6 +176,7 @@ function parseFeature(text, type) {
 }
 
 export function generateChildGenetics() {
+    // Дефолтные значения на случай, если в картах ничего не найдено
     const defaultMotherEyes = ["карие", "зеленые", "серые"][Math.floor(Math.random() * 3)];
     const defaultMotherHair = ["темно-русые", "каштановые", "русые"][Math.floor(Math.random() * 3)];
     
@@ -184,15 +185,24 @@ export function generateChildGenetics() {
 
     if (typeof SillyTavern?.getContext === 'function') {
         const ctx = SillyTavern.getContext();
-        const char = ctx.characters?.[ctx.character_id];
         
+        // 1. Считываем внешность бота (char)
+        const char = ctx.characters?.[ctx.character_id];
         if (char) {
             const charText = `${char.description || ''} ${char.personality || ''}`;
             fatherEyes = parseFeature(charText, "eyes") || "темно-карие";
             fatherHair = parseFeature(charText, "hair") || "темные";
         }
+
+        // 2. Считываем внешность пользователя (user) из активной персоны
+        const userText = ctx.user_description || window.text_user_description || '';
+        if (userText) {
+            motherEyes = parseFeature(userText, "eyes") || defaultMotherEyes;
+            motherHair = parseFeature(userText, "hair") || defaultMotherHair;
+        }
     }
 
+    // Рандомный микс 50/50 от мамы и папы
     const babyEyes = Math.random() > 0.5 ? motherEyes : fatherEyes;
     const babyHair = Math.random() > 0.5 ? motherHair : fatherHair;
 
