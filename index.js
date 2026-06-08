@@ -6,7 +6,7 @@ import {
     extension_prompt_types
 } from '../../../../script.js';
 import { extension_settings } from '../../../extensions.js';
-import { getRandomSymptoms, getFetusData, rollComplication, generateChildGenetics, getPostpartumData } from './symptoms.js';
+import { getRandomSymptoms, getFetusData, rollComplication, getPostpartumData } from './symptoms.js';
 
 const EXTENSION_NAME = 'st-advanced-reproductive-system';
 
@@ -447,8 +447,6 @@ function triggerPregnancy(data) {
         data.babiesGenders.push(Math.random() > 0.5 ? (lang === 'ru' ? 'Мальчик ♂' : 'Boy ♂') : (lang === 'ru' ? 'Девочка ♀' : 'Girl ♀'));
     }
 
-    data.hiddenGenetics = Array(data.babiesCount).fill().map(() => generateChildGenetics());
-
     saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.success(getText('toastConception'));
 }
 
@@ -457,18 +455,14 @@ function processBirthTrigger(method = 'natural') {
     if (!data.isPregnant) return;
 
     for (let i = 0; i < data.babiesCount; i++) {
-        const gen = (data.hiddenGenetics && data.hiddenGenetics[i]) ? data.hiddenGenetics[i] : generateChildGenetics();
         data.childrenList.push({
             id: Date.now() + i,
-            gender: data.babiesGenders[i],
-            eyes: gen.eyes,
-            hair: gen.hair
+            gender: data.babiesGenders[i]
         });
     }
 
     data.isPregnant = false;
     data.pregnancyWeeks = 0; data.pregnancyDays = 0; data.babiesCount = 0; data.babiesGenders = []; data.activeComplication = null;
-    data.hiddenGenetics = [];
     data.postpartumDays = 1; 
     data.deliveryMethod = method; 
 
@@ -490,7 +484,7 @@ function updatePromptInjection(isImmediateBirth = false) {
     if (isImmediateBirth) {
         const lastChildren = data.childrenList.slice(-data.childrenList.length);
         prompt += `🚨 CRITICAL STORY EVENT: {{user}} is GIVING BIRTH right now in this exact scene!\n`;
-        prompt += `Baby details to describe: ${lastChildren.map((c, i) => `Child #${i+1}: ${c.gender}, Eyes: ${c.eyes} color, Hair: ${c.hair} color`).join('; ')}.\n`;
+        prompt += `Baby details to describe: ${lastChildren.map((c, i) => `Child #${i+1}: ${c.gender}`).join('; ')}.\n`;
         setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
         return;
     }
@@ -521,14 +515,11 @@ function updatePromptInjection(isImmediateBirth = false) {
             
             if (revealGenders) {
                 prompt += `[MEDICAL RECORD - ANATOMY SCAN (WEEK 20)]: Fetal development is sufficient to determine sex. Scans confirm the genders are: ${data.babiesGenders.join(', ')}.\n`;
-                if (data.hiddenGenetics && data.hiddenGenetics.length > 0) {
-                    prompt += `Visible Fetal Genetics: ${data.hiddenGenetics.map((c, i) => `Child #${i+1}: Eyes: ${c.eyes}, Hair: ${c.hair}`).join('; ')}.\n`;
-                }
             } else {
-                prompt += `[ULTRASOUND STAGE NOTICE]: Fetal genders and specific cosmetic traits are still completely OBSCURED and hidden from {{char}} (too early to visually see their sex). {{char}} MUST NOT mention or guess their genders yet.\n`;
+                prompt += `[ULTRASOUND STAGE NOTICE]: Fetal genders are still completely OBSCURED and hidden from {{char}} (too early to visually see their sex). {{char}} MUST NOT mention or guess their genders yet.\n`;
             }
         } else if (settings.aiAwareness === 'hidden') {
-            prompt += `[SECRET DATA]: The number of babies, their genders, and traits are strictly CONCEALED from {{char}} right now (Medieval/Blind mode).\n`;
+            prompt += `[SECRET DATA]: The number of babies and their genders are strictly CONCEALED from {{char}} right now (Medieval/Blind mode).\n`;
         } else {
             prompt += `[SECRET DATA]: Ultrasound screening has not occurred yet. The total headcount of babies and their genders are completely unknown to {{char}} right now.\n`;
         }
@@ -634,7 +625,7 @@ function renderUI() {
     if (data.childrenList?.length > 0) {
         familyHtml = `<div style="margin: 10px 0; padding: 10px; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 6px; text-align: left; font-size: 0.85em;">
             <strong style="color: #f472b6; display: block; margin-bottom: 6px;">${getText('newbornTitle')}</strong>
-            ${data.childrenList.map((c, i) => `<div style="margin-bottom: 4px;">👶 Ребенок ${i+1}: <b>${c.gender}</b> (Глаза: <span style="color: #38bdf8;">${c.eyes}</span>, Волосы: <span style="color: #fbbf24;">${c.hair}</span>)</div>`).join('')}
+            ${data.childrenList.map((c, i) => `<div style="margin-bottom: 4px;">👶 Ребенок ${i+1}: <b>${c.gender}</b></div>`).join('')}
         </div>`;
     }
 
@@ -696,7 +687,7 @@ function renderUI() {
 
                     ${(settings.aiAwareness === 'hidden') ? `
                          <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #a1a1aa; font-style: italic;">
-                            🔒 Режим Средневековье: пол и генетика младенца скрыты до момента родов.
+                            🔒 Режим Средневековье: пол младенца скрыт до момента родов.
                          </div>
                     ` : `
                         <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px; color: #f472b6;">
@@ -840,7 +831,6 @@ function renderUI() {
         for (let i = 0; i < count; i++) {
             bodyData.babiesGenders.push(Math.random() > 0.5 ? (lang === 'ru' ? 'Мальчик ♂' : 'Boy ♂') : (lang === 'ru' ? 'Девочка ♀' : 'Girl ♀'));
         }
-        bodyData.hiddenGenetics = Array(count).fill().map(() => generateChildGenetics());
 
         saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.success(`${getText('toastManualPreg')}${weeks}`);
     });
@@ -848,7 +838,7 @@ function renderUI() {
     $('#repro-reset-pregnancy-only').on('click', function() {
         const bodyData = getChatBodyData();
         bodyData.isPregnant = false; bodyData.pregnancyWeeks = 0; bodyData.pregnancyDays = 0; bodyData.babiesCount = 0; bodyData.babiesGenders = []; bodyData.currentSymptoms = [];
-        bodyData.rolledTrimesters = { 1: false, 2: false, 3: false }; bodyData.activeComplication = null; bodyData.hiddenGenetics = [];
+        bodyData.rolledTrimesters = { 1: false, 2: false, 3: false }; bodyData.activeComplication = null;
         bodyData.deliveryMethod = 'none';
 
         saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.info(getText('toastResetPreg'));
