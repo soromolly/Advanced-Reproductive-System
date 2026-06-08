@@ -35,7 +35,7 @@ function createDefaultBodyData() {
         rolledTrimesters: { 1: false, 2: false, 3: false },
         activeComplication: null,
         postpartumDays: 0,
-        deliveryMethod: 'none', // Варианты: 'none', 'natural', 'c_section'
+        deliveryMethod: 'none', // Варианты: 'none', 'natural', 'c_section', 'miscarriage'
         childrenList: [],
         contraception: 'none' 
     };
@@ -329,6 +329,16 @@ function advanceBodyTime(days) {
     }
 
     if (data.isPregnant) {
+        // УГРОЗА ВЫКИДЫША: за каждый прошедший день считаем шанс реального срыва
+        if (data.activeComplication && data.activeComplication.id === 'miscarriage_threat_early' && data.activeComplication.isDiscovered) {
+            for (let i = 0; i < days; i++) {
+                if (Math.random() * 100 < 10) { // 10% шанс в день потерять плод, если не нажать лечение
+                    processMiscarriageTrigger();
+                    return; // Полностью прерываем дальнейший обсчёт беременности
+                }
+            }
+        }
+
         data.pregnancyDays += days;
         if (data.pregnancyDays >= 7) {
             data.pregnancyWeeks += Math.floor(data.pregnancyDays / 7);
@@ -346,33 +356,11 @@ function advanceBodyTime(days) {
 
 function checkConceptionTrigger(text) {
     const data = getChatBodyData();
-    const lowerText = text.toLowerCase();
     
-    // 1. АНАЛИЗ РОДОВ (Теги -> Безопасная подушка ключевых слов)
-    if (data.isPregnant) {
-        const isBirthNaturalTag = /<!--DELIVERY_NATURAL-->/i.test(text);
-        const isBirthCSectionTag = /<!--DELIVERY_CSECTION-->/i.test(text);
-
-        if (isBirthNaturalTag || isBirthCSectionTag) {
-            const method = isBirthCSectionTag ? 'c_section' : 'natural';
-            processBirthTrigger(method);
-            return;
-        }
-
-        // Подушка безопасности на случай, если ИИ проигнорировал тег
-        const hasBirthKeywords = /родила|родоразрешение|появился на свет|появились на свет|появилась на свет|рождение ребенка|родился малыш|родилась малышка|крик ребенка|крик младенца|перерезать пуповину|новорожденн/i.test(lowerText);
-        if (hasBirthKeywords) {
-            // Строгое КС только при прямом упоминании операции, по дефолту роды естественные
-            const hasStrictCSection = /кесарево|кесарева|разрез матки|полостная операция/i.test(lowerText);
-            const method = hasStrictCSection ? 'c_section' : 'natural';
-            processBirthTrigger(method);
-            return;
-        }
-    }
-
+    // Если уже беременна или в послеродовом периоде — проверки на новое зачатие не запускаются.
     if (data.isPregnant || data.postpartumDays > 0) return;
 
-    // 2. АНАЛИЗ ЗАЧАТИЯ (Теги -> Безопасная анатомическая подушка)
+    const lowerText = text.toLowerCase();
     const phase = getBodyPhase();
     const isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     
@@ -381,7 +369,7 @@ function checkConceptionTrigger(text) {
 
     let canConceive = false;
 
-    // А) Сначала смотрим на железные теги
+    // А) Сначала смотрим на скрытые теги эякуляции
     if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalTag) {
         canConceive = true;
     } else if (settings.mode === 'omegaverse') {
@@ -398,15 +386,14 @@ function checkConceptionTrigger(text) {
             const hasAnalText = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|кишку/i.test(lowerText);
 
             if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalText && !hasAnalText) {
-                canConceive = true; // Только вагинальное излитие семени
+                canConceive = true; 
             } else if (settings.mode === 'omegaverse') {
                 if (settings.gender === 'female_omega' && hasVaginalText && !hasAnalText) canConceive = true;
-                if (settings.gender === 'male_omega' && hasAnalText && !hasVaginalText) canConceive = true; // Только анальное излитие семени
+                if (settings.gender === 'male_omega' && hasAnalText && !hasVaginalText) canConceive = true; 
             }
         }
     }
 
-    // Если условие выполнено (по тегу или по безопасному тексту) — кидаем кубик
     if (canConceive) {
         settings.globalRollsCount++;
 
@@ -477,6 +464,25 @@ function processBirthTrigger(method = 'natural') {
     toastr.success(`👶 Роды успешно прошли! Способ: ${methodText}. Статистика беременности сброшена, запущен период восстановления.`);
 }
 
+// Функция критического прерывания беременности при выкидыше
+function processMiscarriageTrigger() {
+    const data = getChatBodyData();
+    data.isPregnant = false;
+    data.pregnancyWeeks = 0;
+    data.pregnancyDays = 0;
+    data.babiesCount = 0;
+    data.babiesGenders = [];
+    data.activeComplication = null;
+    data.postpartumDays = 1;
+    data.deliveryMethod = 'miscarriage'; // Переключаем систему стадий на ветку выкидыша
+
+    updatePromptInjection(); 
+    saveSettingsDebounced();
+    renderUI();
+    
+    toastr.error(`🚨 КРИТИЧЕСКОЕ СОБЫТИЕ: Из-за сильного ухудшения состояния произошел спонтанный выкидыш. Беременность прервана.`);
+}
+
 function updatePromptInjection(isImmediateBirth = false) {
     if (!settings.isEnabled) { setExtensionPrompt(EXTENSION_NAME, '', extension_prompt_types.IN_CHAT, 0); return; }
     const data = getChatBodyData();
@@ -494,7 +500,7 @@ function updatePromptInjection(isImmediateBirth = false) {
 
     if (data.postpartumDays > 0) {
         const pData = getPostpartumData(data.postpartumDays, data.deliveryMethod);
-        prompt += `Status: POSTPARTUM RECOVERY (Day ${data.postpartumDays}/40) | Delivery Method: ${data.deliveryMethod.toUpperCase()}\n`;
+        prompt += `Status: RECOVERY PHASE (Day ${data.postpartumDays}/40) | Event Outcome: ${data.deliveryMethod.toUpperCase()}\n`;
         prompt += `Physical Condition & Limitations: ${pData.desc}\n`;
         setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
         return;
@@ -529,10 +535,7 @@ function updatePromptInjection(isImmediateBirth = false) {
 
         if (data.pregnancyWeeks >= maxWeeks) {
             prompt += `\n[🚨 CRITICAL MANDATORY SYSTEM DIRECTIVE FOR {{char}}]:\n`;
-            prompt += `{{user}} has reached full term (${data.pregnancyWeeks} weeks) and the labor/delivery process is happening RIGHT NOW! You MUST completely write and describe the scene of childbirth and delivery of the babies. At the absolute end of your response text, after all dialogue and descriptions, you MUST append exactly one hidden HTML comment specifying the delivery method based on how the labor went:\n`;
-            prompt += `- For conventional vaginal/natural delivery, append: <!--DELIVERY_NATURAL-->\n`;
-            prompt += `- For surgical planned or emergency Cesarean section, append: <!--DELIVERY_CSECTION-->\n`;
-            prompt += `⚠️ STRICT LIMITATION: Do not omit this tag under any circumstances. Place it verbatim at the very end of your response text.\n`;
+            prompt += `{{user}} has reached full term (${data.pregnancyWeeks} weeks) and the labor/delivery process is starting right now! You MUST completely write and vividly describe the scene of childbirth and the delivery of the babies in full detail. Focus on the emotional and physical intensity of the labor.\n`;
         }
     } else {
         prompt += `Current Cycle Day: ${data.cycleDay}/${settings.cycleLength} | Phase: ${phase}\n`;
@@ -594,16 +597,25 @@ function renderUI() {
     if (data.postpartumDays > 0) {
         const pData = getPostpartumData(data.postpartumDays, data.deliveryMethod);
         const isCS = data.deliveryMethod === 'c_section';
+        const isMiscarriage = data.deliveryMethod === 'miscarriage';
         
-        postpartumHtml = `<div style="margin: 5px 0 10px 0; padding: 10px; background: rgba(16, 185, 129, 0.1); border-left: 3px solid #10b981; border-radius: 4px; text-align: left; font-size: 0.85em; line-height: 1.4;">
-            <strong style="font-size: 1.05em; color: #10b981; display: block; margin-bottom: 4px;">Послеродовое состояние (День ${data.postpartumDays}/40)</strong>
-            <b>Тип родоразрешения:</b> <span style="color: #10b981; font-weight: bold;">${isCS ? 'Кесарево сечение (КС)' : 'Естественные роды (ЕР)'}</span><br>
+        let outcomeText = 'Естественные роды (ЕР)';
+        if (isCS) outcomeText = 'Кесарево сечение (КС)';
+        if (isMiscarriage) outcomeText = 'Выкидыш (Прерывание беременности)';
+
+        postpartumHtml = `<div style="margin: 5px 0 10px 0; padding: 10px; background: ${isMiscarriage ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)'}; border-left: 3px solid ${isMiscarriage ? '#ef4444' : '#10b981'}; border-radius: 4px; text-align: left; font-size: 0.85em; line-height: 1.4;">
+            <strong style="font-size: 1.05em; color: ${isMiscarriage ? '#ef4444' : '#10b981'}; display: block; margin-bottom: 4px;">Послеродовое состояние (День ${data.postpartumDays}/40)</strong>
+            <b>Тип исхода:</b> <span style="color: ${isMiscarriage ? '#ef4444' : '#10b981'}; font-weight: bold;">${outcomeText}</span><br>
             <b>Стадия:</b> <span>${pData.name}</span><br>
             <span style="opacity: 0.85; display: block; margin-top: 4px; font-style: italic;">${pData.desc}</span>
             
-            <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed rgba(16, 185, 129, 0.3);">
-                <strong style="color: #34d399; display: block; margin-bottom: 3px;">💡 Рекомендации по уходу за мамой:</strong>
-                ${isCS ? `
+            <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed ${isMiscarriage ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'};">
+                <strong style="color: ${isMiscarriage ? '#f87171' : '#34d399'}; display: block; margin-bottom: 3px;">💡 Рекомендации по уходу:</strong>
+                ${isMiscarriage ? `
+                    • Обеспечьте полный физический и психоэмоциональный покой, полностью исключите стресс.<br>
+                    • Категорически запрещены любые тепловые процедуры (горячие ванны, сауна) и подъем тяжестей.<br>
+                    • Принимайте легкие спазмолитики по согласованию и дайте репродуктивной системе очиститься.
+                ` : (isCS ? `
                     • Регулярно обрабатывайте антисептиками послеоперационный рубец на животе.<br>
                     • Обязательно используйте послеродовой бандаж при вставании для поддержки брюшной стенки.<br>
                     • Исключите любые нагрузки на мышцы пресса, вставайте с кровати аккуратно через бок.<br>
@@ -613,7 +625,7 @@ function renderUI() {
                     • При наличии внутренних или внешних швов промежности избегайте сидения на жестком до 2-3 недель.<br>
                     • Используйте специальные стерильные послеродовые прокладки для свободного оттока лохий.<br>
                     • Чаще прикладывайте малыша к груди — это естественным образом стимулирует сокращение матки.
-                `}
+                `)}
             </div>
         </div>`;
     }
