@@ -536,7 +536,7 @@ function updatePromptInjection(isImmediateBirth = false) {
         }
     } else {
         prompt += `Current Cycle Day: ${data.cycleDay}/${settings.cycleLength} | Phase: ${phase}\n`;
-        if (data.contrace contraception !== 'none') {
+        if (data.contraception !== 'none') {
             prompt += `Active Birth Control Method: ${data.contraception.toUpperCase()}.\n`;
         }
         if (data.currentSymptoms?.length > 0) prompt += `Current Physical Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
