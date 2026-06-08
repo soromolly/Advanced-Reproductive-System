@@ -346,23 +346,33 @@ function advanceBodyTime(days) {
 
 function checkConceptionTrigger(text) {
     const data = getChatBodyData();
+    const lowerText = text.toLowerCase();
     
-    // 1. ПРОВЕРКА НА РОДЫ (Исключительно скрытые теги ИИ)
+    // 1. АНАЛИЗ РОДОВ (Теги -> Безопасная подушка ключевых слов)
     if (data.isPregnant) {
-        const isBirthNatural = /<!--DELIVERY_NATURAL-->/i.test(text);
-        const isBirthCSection = /<!--DELIVERY_CSECTION-->/i.test(text);
+        const isBirthNaturalTag = /<!--DELIVERY_NATURAL-->/i.test(text);
+        const isBirthCSectionTag = /<!--DELIVERY_CSECTION-->/i.test(text);
 
-        if (isBirthNatural || isBirthCSection) {
-            const method = isBirthCSection ? 'c_section' : 'natural';
+        if (isBirthNaturalTag || isBirthCSectionTag) {
+            const method = isBirthCSectionTag ? 'c_section' : 'natural';
+            processBirthTrigger(method);
+            return;
+        }
+
+        // Подушка безопасности на случай, если ИИ проигнорировал тег
+        const hasBirthKeywords = /родила|родоразрешение|появился на свет|появились на свет|появилась на свет|рождение ребенка|родился малыш|родилась малышка|крик ребенка|крик младенца|перерезать пуповину|новорожденн/i.test(lowerText);
+        if (hasBirthKeywords) {
+            // Строгое КС только при прямом упоминании операции, по дефолту роды естественные
+            const hasStrictCSection = /кесарево|кесарева|разрез матки|полостная операция/i.test(lowerText);
+            const method = hasStrictCSection ? 'c_section' : 'natural';
             processBirthTrigger(method);
             return;
         }
     }
 
-    // Если уже беременна или в послеродовом периоде — проверки на новое зачатие не запускаются
     if (data.isPregnant || data.postpartumDays > 0) return;
 
-    // 2. ПРОВЕРКА НА ЗАЧАТИЕ (Исключительно по тегам и строго по физиологии)
+    // 2. АНАЛИЗ ЗАЧАТИЯ (Теги -> Безопасная анатомическая подушка)
     const phase = getBodyPhase();
     const isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     
@@ -371,18 +381,32 @@ function checkConceptionTrigger(text) {
 
     let canConceive = false;
 
-    // Анатомический фильтр условий зачатия
+    // А) Сначала смотрим на железные теги
     if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalTag) {
-        canConceive = true; // Реализм, Женщина — только вагинально
+        canConceive = true;
     } else if (settings.mode === 'omegaverse') {
-        if (settings.gender === 'female_omega' && hasVaginalTag) {
-            canConceive = true; // Омегаверс, Ж-Омега — только вагинально
-        } else if (settings.gender === 'male_omega' && hasAnalTag) {
-            canConceive = true; // Омегаверс, М-Омега — только анально
+        if (settings.gender === 'female_omega' && hasVaginalTag) canConceive = true;
+        if (settings.gender === 'male_omega' && hasAnalTag) canConceive = true;
+    }
+
+    // Б) Если тегов нет, включаем жесткую текстовую подстраховку строго по физиологии
+    if (!canConceive && !hasVaginalTag && !hasAnalTag) {
+        const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция внутрь|залил внутрь|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|излился внутрь|выплеснул внутрь/i.test(lowerText);
+        
+        if (hasEjaculationInside) {
+            const hasVaginalText = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vagina|pussy|лоно|нутро/i.test(lowerText);
+            const hasAnalText = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|кишку/i.test(lowerText);
+
+            if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalText && !hasAnalText) {
+                canConceive = true; // Только вагинальное излитие семени
+            } else if (settings.mode === 'omegaverse') {
+                if (settings.gender === 'female_omega' && hasVaginalText && !hasAnalText) canConceive = true;
+                if (settings.gender === 'male_omega' && hasAnalText && !hasVaginalText) canConceive = true; // Только анальное излитие семени
+            }
         }
     }
 
-    // Если тег подошел под анатомию текущего режима — крутим кубик
+    // Если условие выполнено (по тегу или по безопасному тексту) — кидаем кубик
     if (canConceive) {
         settings.globalRollsCount++;
 
@@ -512,7 +536,7 @@ function updatePromptInjection(isImmediateBirth = false) {
         }
     } else {
         prompt += `Current Cycle Day: ${data.cycleDay}/${settings.cycleLength} | Phase: ${phase}\n`;
-        if (data.contraception !== 'none') {
+        if (data.contrace contraception !== 'none') {
             prompt += `Active Birth Control Method: ${data.contraception.toUpperCase()}.\n`;
         }
         if (data.currentSymptoms?.length > 0) prompt += `Current Physical Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
