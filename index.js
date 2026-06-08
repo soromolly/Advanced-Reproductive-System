@@ -74,7 +74,7 @@ const TRANSLATIONS = {
         toastConception: '🚨 ЗАЧАТИЕ ПРОИЗОШЛО! Успешная имплантация в матке.',
         toastPregEnd: 'Срок беременности подошел к концу! Пора рожать.',
         pregnancy: 'Беременность 🤰', pregnancyOmega: 'Беременность (Омега) 🤰',
-        menstruation: 'Menstruation 🩸', ovulation: 'Овуляция (Окно зачатия) ✨',
+        menstruation: 'Менструация 🩸', ovulation: 'Овуляция (Окно зачатия) ✨',
         follicularLuteal: 'Фолликулярная/Лютеиновая фаза', heat: 'Течка (Пик фертильности) 🔥', quiescence: 'Период покоя',
         delayed: 'Задержка цикла ⚠️',
         symptomsTitle: '🎯 Симптомы организма:', fetusTitle: '👶 Развитие плода и тела:',
