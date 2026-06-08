@@ -73,7 +73,7 @@ const TRANSLATIONS = {
         toastConception: '🚨 ЗАЧАТИЕ ПРОИЗОШЛО! Успешная имплантация в матке.',
         toastPregEnd: 'Срок беременности подошел к концу! Пора рожать.',
         pregnancy: 'Беременность 🤰', pregnancyOmega: 'Беременность (Омега) 🤰',
-        menstruation: 'Менструация 🩸', ovulation: 'Овуляция (Окно зачатия) ✨',
+        menstruation: 'Menstruation 🩸', ovulation: 'Овуляция (Окно зачатия) ✨',
         follicularLuteal: 'Фолликулярная/Лютеиновая фаза', heat: 'Течка (Пик фертильности) 🔥', quiescence: 'Период покоя',
         delayed: 'Задержка цикла ⚠️',
         symptomsTitle: '🎯 Симптомы организма:', fetusTitle: '👶 Развитие плода и тела:',
@@ -347,8 +347,8 @@ function advanceBodyTime(days) {
 function checkConceptionTrigger(text) {
     const data = getChatBodyData();
     
-    const birthNaturalRegex = //i;
-    const birthCSectionRegex = //i;
+    const birthNaturalRegex = /^$/i;
+    const birthCSectionRegex = /^$/i;
 
     let isBirthNatural = birthNaturalRegex.test(text);
     let isBirthCSection = birthCSectionRegex.test(text);
@@ -379,9 +379,9 @@ function checkConceptionTrigger(text) {
     let isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     let canConceive = false;
 
-    const vaginalRegex = //i;
-    const analRegex = //i;
-    const oralRegex = //i;
+    const vaginalRegex = /^$/i;
+    const analRegex = /^$/i;
+    const oralRegex = /^$/i;
 
     if (vaginalRegex.test(text) || analRegex.test(text) || oralRegex.test(text)) {
         if (settings.mode === 'realism' && settings.gender === 'female' && vaginalRegex.test(text)) {
