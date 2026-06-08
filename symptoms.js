@@ -14,7 +14,7 @@ export const SYMPTOMS = {
         "Внезапный прилив сил и энергии",
         "Заметное усиление либидо",
         "Легкое покалывание в боку (овуляторный синдром)",
-        "Обостерение обоняния (чувствительность к запахам)",
+        "Обострение обоняния (чувствительность к запахам)",
         "Улучшение настроения, уверенность в себе",
         "Легкое покалывание в области поясницы"
     ],
@@ -67,7 +67,7 @@ export const PREGNANCY_STAGES = {
     4: { size: "Маковое зёрнышко", weight: "Менее 1 г", belly: "Живот незаметен", desc: "Эмбрион закрепился в матке. Возможен легкий ранний токсикоз, чувствительность к запахам." },
     8: { size: "Ягода малины", weight: "Около 1 г", belly: "Живот незаметен", desc: "Формируются зачатки конечностей и внутренних органов. Набухает и тяжелеет грудь." },
     12: { size: "Крупная слива", weight: "Около 15 г", belly: "Едва уловимая округлость", desc: "Конец 1-го триместра. Органы сформированы, плод начинает шевелиться, но это еще не чувствуется." },
-    16: { size: "Крупный авокадо", weight: "Около 100 г", belly: "Заметный небольшой бугорок", desc: "Активный рост. У повторнородящих возможны первые нежные шевеления («бабочки в животе»)." },
+    16: { size: "Крупный авокадо", weight: "Около 100 г", belly: "Заметный небольшой бугорок", desc: "Анатомический рост. У повторнородящих возможны первые нежные шевеления («бабочки в животе»)." },
     20: { size: "Большой банан", weight: "Около 300 г", belly: "Округлый, отчетливый живот", desc: "Экватор. Плод отчетливо пихается. Кожа растягивается, матка на уровне пупка." },
     24: { size: "Початок кукурузы", weight: "Около 600 г", belly: "Выпирающий, округлый живот", desc: "Плод слышит звуки. Появляется тяжесть в пояснице, легкая одышка при быстрой ходьбе." },
     28: { size: "Крупный баклажан", weight: "Около 1100 г", belly: "Большой, высоко поднятый живот", desc: "Начало 3-го триместра. Толчки сильные, видны снаружи. Труднее спать на спине." },
@@ -76,7 +76,7 @@ export const PREGNANCY_STAGES = {
     40: { size: "Большой арбуз", weight: "Около 3400 г", belly: "Максимальный размер, опущен вниз", desc: "Срок родов. Матка сильно давит на мочевой пузырь, ходить и дышать тяжело. Готовность к схваткам." }
 };
 
-// Физиология послеродового периода (Разделено на ЕР и КС)
+// Физиология послеродового периода
 export const POSTPARTUM_STAGES = {
     natural: {
         7: { name: "Раннее восстановление (ЕР)", desc: "Тело ломит после колоссальной физической нагрузки. Наблюдаются обильные кровянистые выделения (лохии). Мышцы тазового дна истощены, сидеть и ходить может быть некомфортно из-за микротравм. На 3-5 день активно приходит молоко — грудь сильно наливается, становится горячей и крайне чувствительной." },
@@ -148,35 +148,46 @@ export function rollComplication(trimester) {
     return { id: selected.id, name: selected.name, desc: selected.desc, curable: selected.curable, triggerWeek: startWeek, isDiscovered: false };
 }
 
+// Умный сегментный парсер внешности на регулярных выражениях
 function parseFeature(text, type) {
     if (!text) return null;
     const lower = text.toLowerCase();
     
+    // Вырезаем контекстное окно в 60 символов после упоминания глаз или волос
     const keywords = {
-        eyes: ["глаза", "глаз", "взгляд", "eyes", "eye", "eyecolor"],
-        hair: ["волосы", "волос", "прическа", "шевелюра", "hair", "haircolor"]
-    };
-
-    const colors = {
-        "голубые": "голубые", "карие": "карие", "зеленые": "зеленые", "серые": "серые", "черные": "угольно-черные", 
-        "светлые": "светлые", "рыжие": "огненно-рыжие", "русые": "русые", "темные": "темные", "белые": "белокурые",
-        "blue": "голубые", "brown": "карие", "green": "зеленые", "grey": "серые", "black": "черные", "blond": "светлые", "red": "рыжие"
+        eyes: /(?:eyes?|взгляд|глаза|глаз)[\s\S]{0,60}/i,
+        hair: /(?:hair|волосы|волос|прическа|шевелюра)[\s\S]{0,60}/i
     };
     
-    const words = lower.split(/[\s,.:;()]+/);
-    for (let i = 0; i < words.length; i++) {
-        if (keywords[type].some(k => words[i].includes(k))) {
-            for (let j = Math.max(0, i - 4); j <= Math.min(words.length - 1, i + 4); j++) {
-                const cleanWord = words[j].replace(/[^a-zа-яё]/g, '');
-                if (colors[cleanWord]) return colors[cleanWord];
-            }
-        }
+    const match = lower.match(keywords[type]);
+    if (!match) return null;
+    const segment = match[0];
+    
+    if (type === 'eyes') {
+        if (segment.includes('turquoise') || segment.includes('бирюзов')) return 'бирюзово-зеленые';
+        if (segment.includes('steel') || segment.includes('стальн')) return 'стально-серые';
+        if (segment.includes('blue') || segment.includes('голуб') || segment.includes('син')) return 'голубые';
+        if (segment.includes('green') || segment.includes('зелен')) return 'зеленые';
+        if (segment.includes('grey') || segment.includes('gray') || segment.includes('серы')) return 'серые';
+        if (segment.includes('brown') || segment.includes('кари')) return 'карие';
+        if (segment.includes('black') || segment.includes('черн')) return 'черные';
     }
+    
+    if (type === 'hair') {
+        if (segment.includes('raven') || segment.includes('угольн')) return 'угольно-черные';
+        if (segment.includes('light brown') || segment.includes('светло-рус')) return 'светло-русые';
+        if (segment.includes('dark brown') || segment.includes('темно-кашт') || segment.includes('темно-рус')) return 'темно-русые';
+        if (segment.includes('brown') || segment.includes('каштан') || segment.includes('рус')) return 'русые';
+        if (segment.includes('black') || segment.includes('черн')) return 'черные';
+        if (segment.includes('blond') || segment.includes('светл') || segment.includes('бел')) return 'светлые';
+        if (segment.includes('red') || segment.includes('рыж')) return 'огненно-рыжие';
+    }
+    
     return null;
 }
 
 export function generateChildGenetics() {
-    // Дефолтные значения на случай, если в картах ничего не найдено
+    // Резервные дефолты на случай пустых карточек
     const defaultMotherEyes = ["карие", "зеленые", "серые"][Math.floor(Math.random() * 3)];
     const defaultMotherHair = ["темно-русые", "каштановые", "русые"][Math.floor(Math.random() * 3)];
     
@@ -186,7 +197,7 @@ export function generateChildGenetics() {
     if (typeof SillyTavern?.getContext === 'function') {
         const ctx = SillyTavern.getContext();
         
-        // 1. Считываем внешность бота (char)
+        // 1. Извлекаем внешность персонажа (char)
         const char = ctx.characters?.[ctx.character_id];
         if (char) {
             const charText = `${char.description || ''} ${char.personality || ''}`;
@@ -194,15 +205,15 @@ export function generateChildGenetics() {
             fatherHair = parseFeature(charText, "hair") || "темные";
         }
 
-        // 2. Считываем внешность пользователя (user) из активной персоны
-        const userText = ctx.user_description || window.text_user_description || '';
+        // 2. Безопасный сбор данных пользователя (user) из всех возможных полей SillyTavern
+        const userText = ctx.user?.description || ctx.user_description || window.text_user_description || '';
         if (userText) {
             motherEyes = parseFeature(userText, "eyes") || defaultMotherEyes;
             motherHair = parseFeature(userText, "hair") || defaultMotherHair;
         }
     }
 
-    // Рандомный микс 50/50 от мамы и папы
+    // Случайное наследование признаков 50/50 от родителей
     const babyEyes = Math.random() > 0.5 ? motherEyes : fatherEyes;
     const babyHair = Math.random() > 0.5 ? motherHair : fatherHair;
 
