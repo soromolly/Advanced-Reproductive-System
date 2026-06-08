@@ -35,6 +35,7 @@ function createDefaultBodyData() {
         rolledTrimesters: { 1: false, 2: false, 3: false },
         activeComplication: null,
         postpartumDays: 0,
+        deliveryMethod: 'none', // Варианты: 'none', 'natural', 'c_section'
         childrenList: [],
         contraception: 'none' 
     };
@@ -53,10 +54,10 @@ const MONTHS = {
 
 const TRANSLATIONS = {
     ru: {
-        title: '🧬 Репродуктивная система',
+        title: '🧬 Система Репродукции V2',
         system: 'Система:', realism: 'Реализм', omegaverse: 'ОмегаВерс',
-        physiology: 'Физиология:', female: 'Женщина', female_omega: 'Женщина Омега', male_omega: 'Мужчина Омега',
-        aiLogic: 'Знания ИИ:', ultrasound: 'УЗИ (20 нед)', medieval: 'Средневековье', knowsAll: 'Знает всё',
+        physiology: 'Физиология:', female: 'Женщина', female_omega: 'Ж-Омега', male_omega: 'М-Омега',
+        aiLogic: 'Логика ИИ:', ultrasound: 'УЗИ (20 нед)', medieval: 'Средневековье', knowsAll: 'Знает всё',
         phaseRealism: 'Текущая фаза:', phaseOmega: 'Текущее состояние омеги:',
         termInRp: 'Срок в RP:', weeksShort: 'нед.', daysShort: 'дн.',
         wombMap: 'Карта плода:', babiesCount: 'Детей:', babiesSex: 'Пол:',
@@ -76,7 +77,7 @@ const TRANSLATIONS = {
         follicularLuteal: 'Фолликулярная/Лютеиновая фаза', heat: 'Течка (Пик фертильности) 🔥', quiescence: 'Период покоя',
         delayed: 'Задержка цикла ⚠️',
         symptomsTitle: '🎯 Симптомы организма:', fetusTitle: '👶 Развитие плода и тела:',
-        complicationTitle: '⚠️ Медицинское осложнение:', cureBtn: '💊 Провести лечение / Облегчить симптом',
+        complicationTitle: '⚠️ Медицинское осложнение:', cureBtn: '💊 Провести лечение / Облигчить симптом',
         postpartumPhase: 'Восстановление после родов 🩹', newbornTitle: '🍼 Рожденные дети в семье:',
         giveBirthBtn: '🔔 ПРИНЯТЬ РОДЫ (Сюжетный триггер)',
         protectionLabel: 'Контрацепция:', protectionNone: 'Без защиты', protectionCondom: 'Презерватив (Барьерный)',
@@ -142,6 +143,7 @@ function getChatBodyData() {
     }
     const data = settings.chatPregnancyData[chatId];
     if (data.postpartumDays === undefined) data.postpartumDays = 0;
+    if (data.deliveryMethod === undefined) data.deliveryMethod = 'none';
     if (!data.childrenList) data.childrenList = [];
     if (!data.rolledTrimesters) data.rolledTrimesters = { 1: false, 2: false, 3: false };
     if (data.contraception === undefined) data.contraception = 'none'; 
@@ -319,6 +321,7 @@ function advanceBodyTime(days) {
         data.postpartumDays += days;
         if (data.postpartumDays > 40) {
             data.postpartumDays = 0;
+            data.deliveryMethod = 'none';
             data.cycleDay = 1; 
             toastr.success("Послеродовое восстановление завершено. Репродуктивный цикл запущен.");
         }
@@ -341,13 +344,26 @@ function advanceBodyTime(days) {
     }
 }
 
+/**
+ * ОБНОВЛЕННЫЙ ТРИГГЕР РОДОВ И ЗАЧАТИЯ
+ */
 function checkConceptionTrigger(text) {
     const data = getChatBodyData();
+    const lowerText = text.toLowerCase();
+
+    // ПЕРЕХВАТ ТЕГОВ РОДОРАЗРЕШЕНИЯ ОТ ИИ[cite: 4]
+    const isBirthNaturalTag = lowerText.includes('<!-- system_check: birth_natural -->');
+    const isBirthCSectionTag = lowerText.includes('<!-- system_check: birth_c_section -->');
+
+    if (data.isPregnant && (isBirthNaturalTag || isBirthCSectionTag)) {
+        const method = isBirthCSectionTag ? 'c_section' : 'natural';
+        processBirthTrigger(method);
+        return;
+    }
+
     if (data.isPregnant || data.postpartumDays > 0) return;
 
-    const lowerText = text.toLowerCase();
     const phase = getBodyPhase();
-    
     let isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     let canConceive = false;
 
@@ -407,6 +423,7 @@ function triggerPregnancy(data) {
     data.isPregnant = true;
     data.pregnancyWeeks = 0; data.pregnancyDays = 0;
     data.currentSymptoms = []; data.rolledTrimesters = { 1: false, 2: false, 3: false }; data.activeComplication = null;
+    data.deliveryMethod = 'none';
 
     const roll = Math.random() * 100;
     data.babiesCount = settings.mode === 'omegaverse' ? (roll > 92 ? 3 : roll > 70 ? 2 : 1) : (roll > 98.5 ? 3 : roll > 95 ? 2 : 1);
@@ -422,7 +439,10 @@ function triggerPregnancy(data) {
     saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.success(getText('toastConception'));
 }
 
-function processBirthTrigger() {
+/**
+ * ИСПРАВЛЕННЫЙ СКРИПТ АВТОМАТИЗАЦИИ РОДОВ[cite: 4]
+ */
+function processBirthTrigger(method = 'natural') {
     const data = getChatBodyData();
     if (!data.isPregnant) return;
 
@@ -440,11 +460,14 @@ function processBirthTrigger() {
     data.pregnancyWeeks = 0; data.pregnancyDays = 0; data.babiesCount = 0; data.babiesGenders = []; data.activeComplication = null;
     data.hiddenGenetics = [];
     data.postpartumDays = 1; 
+    data.deliveryMethod = method; // Фиксируем тип операции/родов[cite: 4]
 
-    updatePromptInjection(true); 
+    updatePromptInjection(); 
     saveSettingsDebounced();
     renderUI();
-    toastr.success("Сюжетное событие: Роды начались!");
+    
+    const methodText = method === 'c_section' ? 'Кесарево сечение' : 'Естественные роды';
+    toastr.success(`👶 Роды успешно прошли! Способ: ${methodText}. Статистика беременности сброшена, запущен период восстановления.`);[cite: 4]
 }
 
 function updatePromptInjection(isImmediateBirth = false) {
@@ -463,20 +486,29 @@ function updatePromptInjection(isImmediateBirth = false) {
     }
 
     if (data.postpartumDays > 0) {
-        const pData = getPostpartumData(data.postpartumDays);
-        prompt += `Status: POSTPARTUM RECOVERY (Day ${data.postpartumDays}/40) | Phase: ${pData.name}\n`;
-        prompt += `Physical Condition: ${pData.desc}\n`;
+        const pData = getPostpartumData(data.postpartumDays, data.deliveryMethod);
+        prompt += `Status: POSTPARTUM RECOVERY (Day ${data.postpartumDays}/40) | Delivery Method: ${data.deliveryMethod.toUpperCase()}\n`;[cite: 4]
+        prompt += `Physical Condition & Limitations: ${pData.desc}\n`;[cite: 4]
         setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
         return;
     }
 
     if (data.isPregnant && (data.pregnancyWeeks > 0 || data.cycleDay > settings.cycleLength)) {
+        const maxWeeks = settings.maxPregnancyWeeks || (settings.mode === 'omegaverse' ? 36 : 40);
         prompt += `Status: PREGNANT | Duration: ${data.pregnancyWeeks} weeks.\n`;
         const fetus = getFetusData(data.pregnancyWeeks);
         prompt += `Fetus Size: ${fetus.size} | Maternal Body: ${fetus.belly}. ${fetus.desc}\n`;
         
         if (data.currentSymptoms?.length > 0) {
             prompt += `Current Pregnancy Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
+        }
+
+        // ДИРЕКТИВА ДЛЯ ИИ НА РОДЫ ПРИ ДОСТИЖЕНИИ СРОКА[cite: 4]
+        if (data.pregnancyWeeks >= maxWeeks) {
+            prompt += `🚨 CRITICAL INSTRUCTION: {{user}} has reached full term (${data.pregnancyWeeks} weeks) and is GIVING BIRTH RIGHT NOW in this very post! You MUST write the delivery scene. At the absolute end of your response text, you MUST append exactly one hidden HTML comment indicating how the birth went based on the context:
+            - If it was a conventional vaginal/natural delivery: <!-- system_check: birth_natural -->
+            - If it required a surgical planned or emergency Cesarean section: <!-- system_check: birth_c_section -->
+            Do not add any text or code after this comment tag.\n`;[cite: 4]
         }
 
         let revealCount = (settings.aiAwareness === 'full') || (settings.aiAwareness === 'dynamic' && data.pregnancyWeeks >= 12);
@@ -554,13 +586,33 @@ function renderUI() {
         }
     }
 
+    // ДИНАМИЧЕСКИЕ РЕКОМЕНДАЦИИ ПОСЛЕ РОДОВ (ЕР / КС)[cite: 4]
     let postpartumHtml = '';
     if (data.postpartumDays > 0) {
-        const pData = getPostpartumData(data.postpartumDays);
+        const pData = getPostpartumData(data.postpartumDays, data.deliveryMethod);
+        const isCS = data.deliveryMethod === 'c_section';
+        
         postpartumHtml = `<div style="margin: 5px 0 10px 0; padding: 10px; background: rgba(16, 185, 129, 0.1); border-left: 3px solid #10b981; border-radius: 4px; text-align: left; font-size: 0.85em; line-height: 1.4;">
             <strong style="font-size: 1.05em; color: #10b981; display: block; margin-bottom: 4px;">Послеродовое состояние (День ${data.postpartumDays}/40)</strong>
-            <b>Стадия:</b> ${pData.name}<br><span style="opacity: 0.85; display: block; margin-top: 2px;">${pData.desc}</span>
-        </div>`;
+            <b>Тип родоразрешения:</b> <span style="color: #10b981; font-weight: bold;">${isCS ? 'Кесарево сечение (КС)' : 'Естественные роды (ЕР)'}</span><br>[cite: 4]
+            <b>Стадия:</b> <span>${pData.name}</span><br>
+            <span style="opacity: 0.85; display: block; margin-top: 4px; font-style: italic;">${pData.desc}</span>
+            
+            <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed rgba(16, 185, 129, 0.3);">
+                <strong style="color: #34d399; display: block; margin-bottom: 3px;">💡 Рекомендации по уходу за мамой:</strong>
+                ${isCS ? `
+                    • Регулярно обрабатывайте антисептиками послеоперационный рубец на животе.<br>
+                    • Обязательно используйте послеродовой бандаж при вставании для поддержки брюшной стенки.<br>
+                    • Исключите любые нагрузки на мышцы пресса, вставайте с кровати аккуратно через бок.<br>
+                    • Запрещено поднимать любые предметы, вес которых превышает вес новорожденного ребенка.
+                ` : `
+                    • Соблюдайте строжайшую гигиену (подмывание теплой водой после каждого посещения туалета).<br>
+                    • При наличии внутренних или внешних швов промежности избегайте сидения на жестком до 2-3 недель.<br>
+                    • Используйте специальные стерильные послеродовые прокладки для свободного оттока лохий.<br>
+                    • Чаще прикладывайте малыша к груди — это естественным образом стимулирует сокращение матки.
+                `}
+            </div>
+        </div>`;[cite: 4]
     }
 
     let complicationHtml = '';
@@ -617,7 +669,7 @@ function renderUI() {
                 <label style="font-size: 0.9em; opacity: 0.85;">${getText('protectionLabel')}</label>
                 <select id="repro-contraception" ${data.isPregnant || data.postpartumDays > 0 ? 'disabled' : ''} style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none; opacity: ${data.isPregnant || data.postpartumDays > 0 ? '0.5' : '1'};">
                     <option value="none" ${data.contraception === 'none' ? 'selected' : ''}>${getText('protectionNone')}</option>
-                    <option value="condom" ${data.contraception === 'condom' ? 'selected' : ''}>${getText('protectionCondom')}</option>
+                    <option value="condom" ${data.contraception === 'condom' ? 'selected' : ''}>${getText('protectionom')}</option>
                     <option value="pills" ${data.contraception === 'pills' ? 'selected' : ''}>${getText('protectionPills')}</option>
                     <option value="iud" ${data.contraception === 'iud' ? 'selected' : ''}>${getText('protectionIud')}</option>
                 </select>
@@ -745,8 +797,10 @@ function renderUI() {
         bodyData.currentSymptoms = []; saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.success(getText('toastSaved'));
     });
 
+    // Изменение ручного клика по родам (добавлено меню выбора типа операции)
     $('#repro-btn-birth-trigger').off('click').on('click', function() {
-        if (confirm("Вы хотите запустить событие родов прямо сейчас в чате?")) { processBirthTrigger(); }
+        const method = confirm("Выполнить родоразрешение путем операции Кесарева сечения (КС)? [ОК - Кесарево, Отмена - Естественные роды]") ? 'c_section' : 'natural';
+        processBirthTrigger(method);
     });
 
     $('#repro-cure-complication').off('click').on('click', function() {
@@ -775,6 +829,7 @@ function renderUI() {
         bodyData.isPregnant = true; bodyData.pregnancyWeeks = weeks; bodyData.pregnancyDays = 0; bodyData.babiesCount = count; bodyData.currentSymptoms = [];
         bodyData.rolledTrimesters = { 1: false, 2: false, 3: false }; bodyData.activeComplication = null;
         bodyData.babiesGenders = [];
+        data.deliveryMethod = 'none';
         
         const lang = getLanguage();
         for (let i = 0; i < count; i++) {
@@ -789,6 +844,7 @@ function renderUI() {
         const bodyData = getChatBodyData();
         bodyData.isPregnant = false; bodyData.pregnancyWeeks = 0; bodyData.pregnancyDays = 0; bodyData.babiesCount = 0; bodyData.babiesGenders = []; bodyData.currentSymptoms = [];
         bodyData.rolledTrimesters = { 1: false, 2: false, 3: false }; bodyData.activeComplication = null; bodyData.hiddenGenetics = [];
+        bodyData.deliveryMethod = 'none';
 
         saveSettingsDebounced(); renderUI(); updatePromptInjection(); toastr.info(getText('toastResetPreg'));
     });
