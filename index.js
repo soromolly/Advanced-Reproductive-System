@@ -371,8 +371,8 @@ function checkConceptionTrigger(text) {
     const phase = getBodyPhase();
     const isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     
-    const hasVaginalTag = //i.test(text);
-    const hasAnalTag = //i.test(text);
+    const hasVaginalTag = /<!--CUM_VAGINAL-->/i.test(text);
+    const hasAnalTag = /<!--CUM_ANAL-->/i.test(text);
 
     let canConceive = false;
 
@@ -561,7 +561,10 @@ function updatePromptInjection(isImmediateBirth = false) {
         
         prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has explicitly occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
         Choose exactly one that matches the finished action and write it verbatim:
-        - If ejaculation has fully completed inside the vagina: - If ejaculation has fully completed inside the anus: - If ejaculation has fully completed inside the mouth/oral: ⚠️ STRICTION LIMITATION: You MUST only append this tag at the very end when the action is truly COMPLETE and the climax has happened. Do not include this tag for foreplay or ongoing descriptions. Do not append if no climax/ejaculation occurs.\n`;
+        - If ejaculation has fully completed inside the vagina: <!--CUM_VAGINAL-->
+        - If ejaculation has fully completed inside the anus: <!--CUM_ANAL-->
+        - If ejaculation has fully completed inside the mouth/oral: <!--CUM_ORAL-->
+        ⚠️ STRICTION LIMITATION: You MUST only append this tag at the very end when the action is truly COMPLETE and the climax has happened. Do not include this tag for foreplay or ongoing descriptions. Do not append if no climax/ejaculation occurs.\n`;
     }
 
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
@@ -814,7 +817,6 @@ function renderUI() {
     }
     container.html(html);
 
-    // Слушатели новых галочек управления
     $('#repro-is-enabled').off('change').on('change', function() {
         settings.isEnabled = $(this).is(':checked');
         saveSettingsDebounced();
@@ -919,7 +921,7 @@ jQuery(async () => {
     if (typeof eventSource?.on === 'function') { eventSource.on('i18n_language_changed', () => { renderUI(); }); }
 
     eventSource.on(event_types.MESSAGE_SENT, async (messageIndex) => {
-        if (!settings.isEnabled) return; // Расширение полностью отключено, ничего не обсчитываем
+        if (!settings.isEnabled) return; 
         const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
         const chat = context ? context.chat : window.chat;
         if (!chat || !chat[messageIndex]) return;
@@ -931,7 +933,7 @@ jQuery(async () => {
     });
 
     eventSource.on(event_types.MESSAGE_RECEIVED, async (messageIndex) => {
-        if (!settings.isEnabled) return; // Расширение полностью отключено, ничего не обсчитываем
+        if (!settings.isEnabled) return; 
         const context = typeof SillyTavern?.getContext === 'function' ? SillyTavern.getContext() : null;
         const chat = context ? context.chat : window.chat;
         if (!chat || !chat[messageIndex]) return;
