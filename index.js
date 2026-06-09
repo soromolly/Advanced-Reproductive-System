@@ -6,13 +6,14 @@ import {
     extension_prompt_types
 } from '../../../../script.js';
 import { extension_settings } from '../../../extensions.js';
-import { getRandomSymptoms, getFetusData, rollComplication, getPostpartumData } from './symptoms.js';
+import { getRandomSymptoms, getFetusData, rollComplication, getPostpartumData, getRandomFetalDisease } from './symptoms.js';
 
 const EXTENSION_NAME = 'st-advanced-reproductive-system';
 
 const DEFAULT_SETTINGS = {
     isEnabled: true,
-    isNotificationsEnabled: true, // Галочка для всплывающих уведомлений
+    isNotificationsEnabled: true,
+    disableFetalPathologies: false, // Новая настройка: отключение врожденных болезней плода
     mode: 'realism',       
     gender: 'female',      
     aiAwareness: 'dynamic', 
@@ -38,7 +39,8 @@ function createDefaultBodyData() {
         postpartumDays: 0,
         deliveryMethod: 'none', // Варианты: 'none', 'natural', 'c_section', 'miscarriage'
         childrenList: [],
-        contraception: 'none' 
+        contraception: 'none',
+        fetalDisease: null // Добавлено поле для врожденной болезни плода
     };
 }
 
@@ -55,10 +57,10 @@ const MONTHS = {
 
 const TRANSLATIONS = {
     ru: {
-        title: '🧬 Репродуктивная система',
+        title: '🧬 Система Репродукции V2',
         system: 'Система:', realism: 'Реализм', omegaverse: 'ОмегаВерс',
-        physiology: 'Физиология:', female: 'Женщина', female_omega: 'Женщина Омега', male_omega: 'Мужчина Омегa',
-        aiLogic: 'Знания ИИ:', ultrasound: 'УЗИ (20 нед)', medieval: 'Средневековье', knowsAll: 'Знает всё',
+        physiology: 'Физиология:', female: 'Женщина', female_omega: 'Ж-Омега', male_omega: 'М-Омеga',
+        aiLogic: 'Логика ИИ:', ultrasound: 'УЗИ (20 нед)', medieval: 'Средневековье', knowsAll: 'Знает всё',
         phaseRealism: 'Текущая фаза:', phaseOmega: 'Текущее состояние омеги:',
         termInRp: 'Срок в RP:', weeksShort: 'нед.', daysShort: 'дн.',
         wombMap: 'Карта плода:', babiesCount: 'Детей:', babiesSex: 'Пол:',
@@ -74,7 +76,7 @@ const TRANSLATIONS = {
         toastConception: '🚨 ЗАЧАТИЕ ПРОИЗОШЛО! Успешная имплантация в матке.',
         toastPregEnd: 'Срок беременности подошел к концу! Пора рожать.',
         pregnancy: 'Беременность 🤰', pregnancyOmega: 'Беременность (Омега) 🤰',
-        menstruation: 'Менструация 🩸', ovulation: 'Овуляция (Окно зачатия) ✨',
+        menstruation: 'Menstruation 🩸', ovulation: 'Овуляция (Окно зачатия) ✨',
         follicularLuteal: 'Фолликулярная/Лютеиновая фаза', heat: 'Течка (Пик фертильности) 🔥', quiescence: 'Период покоя',
         delayed: 'Задержка цикла ⚠️',
         symptomsTitle: '🎯 Симптомы организма:', fetusTitle: '👶 Развитие плода и тела:',
@@ -85,7 +87,8 @@ const TRANSLATIONS = {
         protectionPills: 'Оральные контрацептивы (КОК)', protectionIud: 'Внутриматочная спираль (ВМС)',
         globalRollsLabel: 'Всего скрытых проверок на зачатие:',
         eddLabel: '📅 ПДР (Дата родов):',
-        maxWeeksLabel: 'Срок беременности (нед):'
+        maxWeeksLabel: 'Срок беременности (нед):',
+        disablePathologyLabel: 'Отключить патологии плода:'
     },
     en: {
         title: '🧬 Reproductive System V2',
@@ -118,7 +121,8 @@ const TRANSLATIONS = {
         protectionPills: 'Oral Extraconceptives (Pills)', protectionIud: 'Intrauterine Device (IUD)',
         globalRollsLabel: 'Total hidden conception checks:',
         eddLabel: '📅 EDD (Due Date):',
-        maxWeeksLabel: 'Pregnancy Term (wks):'
+        maxWeeksLabel: 'Pregnancy Term (wks):',
+        disablePathologyLabel: 'Disable fetal pathologies:'
     }
 };
 
@@ -147,7 +151,9 @@ function getChatBodyData() {
     if (data.deliveryMethod === undefined) data.deliveryMethod = 'none';
     if (!data.childrenList) data.childrenList = [];
     if (!data.rolledTrimesters) data.rolledTrimesters = { 1: false, 2: false, 3: false };
+    if (!data.rolledTrimesters) data.rolledTrimesters = { 1: false, 2: false, 3: false };
     if (data.contraception === undefined) data.contraception = 'none'; 
+    if (data.fetalDisease === undefined) data.fetalDisease = null;
     return data;
 }
 
@@ -159,6 +165,7 @@ function loadSettings() {
     if (settings.globalRollsCount === undefined) settings.globalRollsCount = 0;
     if (settings.maxPregnancyWeeks === undefined) settings.maxPregnancyWeeks = 40;
     if (settings.isNotificationsEnabled === undefined) settings.isNotificationsEnabled = true;
+    if (settings.disableFetalPathologies === undefined) settings.disableFetalPathologies = false;
 
     const data = getChatBodyData();
     updateSymptomsData(data);
@@ -371,8 +378,8 @@ function checkConceptionTrigger(text) {
     const phase = getBodyPhase();
     const isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     
-    const hasVaginalTag = /<!--CUM_VAGINAL-->/i.test(text);
-    const hasAnalTag = /<!--CUM_ANAL-->/i.test(text);
+    const hasVaginalTag = //i.test(text);
+    const hasAnalTag = //i.test(text);
 
     let canConceive = false;
 
@@ -390,10 +397,10 @@ function checkConceptionTrigger(text) {
             const hasVaginalText = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vagina|pussy|лоно|нутро/i.test(lowerText);
             const hasAnalText = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|кишку/i.test(lowerText);
 
-            if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalText && !hasAnalText) {
+            if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalText && !hasAnalTag) {
                 canConceive = true; 
             } else if (settings.mode === 'omegaverse') {
-                if (settings.gender === 'female_omega' && hasVaginalText && !hasAnalText) canConceive = true;
+                if (settings.gender === 'female_omega' && hasVaginalText && !hasAnalTag) canConceive = true;
                 if (settings.gender === 'male_omega' && hasAnalText && !hasVaginalText) canConceive = true; 
             }
         }
@@ -436,6 +443,14 @@ function triggerPregnancy(data) {
     data.pregnancyWeeks = 0; data.pregnancyDays = 0;
     data.currentSymptoms = []; data.rolledTrimesters = { 1: false, 2: false, 3: false }; data.activeComplication = null;
     data.deliveryMethod = 'none';
+    data.childrenList = [];
+    data.postpartumDays = 0;
+    
+    // Мизерный (3%) шанс врожденной болезни плода, если не отключено в настройках
+    data.fetalDisease = null;
+    if (!settings.disableFetalPathologies && Math.random() < 0.03) {
+        data.fetalDisease = getRandomFetalDisease();
+    }
 
     const roll = Math.random() * 100;
     data.babiesCount = settings.mode === 'omegaverse' ? (roll > 92 ? 3 : roll > 70 ? 2 : 1) : (roll > 98.5 ? 3 : roll > 95 ? 2 : 1);
@@ -539,6 +554,11 @@ function updatePromptInjection(isImmediateBirth = false) {
             
             if (revealGenders) {
                 prompt += `[MEDICAL RECORD - ANATOMY SCAN (WEEK 20)]: Fetal development is sufficient to determine sex. Scans confirm the genders are: ${data.babiesGenders.join(', ')}.\n`;
+                
+                // Инжектируем врожденную болезнь, если она выпала и срок сканирования позволяет ее увидеть
+                if (data.fetalDisease && settings.aiAwareness !== 'hidden') {
+                    prompt += `[MEDICAL ABNORMALITY DETECTED]: An ultrasound anatomy scan revealed a congenital fetal pathology: ${data.fetalDisease.name} — ${data.fetalDisease.desc}\n`;
+                }
             } else {
                 prompt += `[ULTRASOUND STAGE NOTICE]: Fetal genders are still completely OBSCURED and hidden from {{char}} (too early to visually see their sex). {{char}} MUST NOT mention or guess their genders yet.\n`;
             }
@@ -561,10 +581,7 @@ function updatePromptInjection(isImmediateBirth = false) {
         
         prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has explicitly occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
         Choose exactly one that matches the finished action and write it verbatim:
-        - If ejaculation has fully completed inside the vagina: <!--CUM_VAGINAL-->
-        - If ejaculation has fully completed inside the anus: <!--CUM_ANAL-->
-        - If ejaculation has fully completed inside the mouth/oral: <!--CUM_ORAL-->
-        ⚠️ STRICTION LIMITATION: You MUST only append this tag at the very end when the action is truly COMPLETE and the climax has happened. Do not include this tag for foreplay or ongoing descriptions. Do not append if no climax/ejaculation occurs.\n`;
+        - If ejaculation has fully completed inside the vagina: - If ejaculation has fully completed inside the anus: - If ejaculation has fully completed inside the mouth/oral: ⚠️ STRICTION LIMITATION: You MUST only append this tag at the very end when the action is truly COMPLETE and the climax has happened. Do not include this tag for foreplay or ongoing descriptions. Do not append if no climax/ejaculation occurs.\n`;
     }
 
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
@@ -588,13 +605,25 @@ function renderUI() {
 
     let fetusHtml = '';
     let eddHtml = ''; 
+    let diseaseHtml = ''; // HTML для вывода патологии в панели
 
     if (data.isPregnant && (data.pregnancyWeeks > 0 || data.cycleDay > settings.cycleLength)) {
         const fetus = getFetusData(data.pregnancyWeeks);
+        
+        // Отображение врожденной болезни на УЗИ (после 20 недели)
+        if (data.fetalDisease && data.pregnancyWeeks >= 20 && settings.aiAwareness !== 'hidden') {
+            diseaseHtml = `<div style="margin-top: 8px; padding: 8px; background: rgba(239, 68, 68, 0.12); border-left: 3px solid #ef4444; border-radius: 4px; text-align: left; font-size: 0.9em; line-height: 1.4;">
+                <strong style="color: #f87171; display: block; margin-bottom: 3px;">⚠️ Врожденная патология плода (УЗИ):</strong>
+                <b>${data.fetalDisease.name}</b><br>
+                <span style="opacity: 0.9; font-style: italic;">${data.fetalDisease.desc}</span>
+            </div>`;
+        }
+
         fetusHtml = `<div style="margin: 5px 0 10px 0; padding: 10px; background: rgba(56, 189, 248, 0.1); border-left: 3px solid #38bdf8; border-radius: 4px; text-align: left; font-size: 0.85em; line-height: 1.4;">
             <strong style="font-size: 1.05em; color: #38bdf8; display: block; margin-bottom: 5px;">${getText('fetusTitle')}</strong>
             • Размер плода: <span style="color: #38bdf8; font-weight: bold;">${fetus.size}</span><br>• Вес: <span>${fetus.weight}</span><br>• Живот: <span>${fetus.belly}</span><br>
             <span style="display: block; margin-top: 4px; opacity: 0.85; font-style: italic;">${fetus.desc}</span>
+            ${diseaseHtml}
         </div>`;
 
         if (data.lastRpDate) {
@@ -682,6 +711,12 @@ function renderUI() {
             </div>
 
             <div id="repro-options-panel" style="display: flex; flex-direction: column; opacity: ${settings.isEnabled ? '1' : '0.35'}; pointer-events: ${settings.isEnabled ? 'auto' : 'none'}; transition: opacity 0.15s;">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(0,0,0,0.1); padding: 6px 10px; border-radius: 6px;">
+                    <label style="font-size: 0.9em; opacity: 0.9; cursor: pointer;" for="repro-disable-pathologies">${getText('disablePathologyLabel')}</label>
+                    <input type="checkbox" id="repro-disable-pathologies" ${settings.disableFetalPathologies ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px;"/>
+                </div>
+
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <label style="font-size: 0.9em; opacity: 0.85;">${getText('system')}</label>
                     <select id="repro-mode" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%; font-family: inherit; outline: none;">
@@ -829,6 +864,20 @@ function renderUI() {
         saveSettingsDebounced();
     });
 
+    // Обработчик переключателя врожденных патологий
+    $('#repro-disable-pathologies').off('change').on('change', function() {
+        settings.disableFetalPathologies = $(this).is(':checked');
+        saveSettingsDebounced();
+        
+        const bodyData = getChatBodyData();
+        // Если ставим галочку "отключить", стираем уже присвоенную болезнь у текущей Б
+        if (settings.disableFetalPathologies) {
+            bodyData.fetalDisease = null;
+        }
+        renderUI();
+        updatePromptInjection();
+    });
+
     $('#repro-contraception').off('change').on('change', function() {
         data.contraception = $(this).val();
         saveSettingsDebounced();
@@ -887,6 +936,12 @@ function renderUI() {
         bodyData.babiesGenders = [];
         data.deliveryMethod = 'none';
         
+        // Ручной запуск также проверяет шанс врожденной патологии
+        bodyData.fetalDisease = null;
+        if (!settings.disableFetalPathologies && Math.random() < 0.03) {
+            bodyData.fetalDisease = getRandomFetalDisease();
+        }
+        
         const lang = getLanguage();
         for (let i = 0; i < count; i++) {
             bodyData.babiesGenders.push(Math.random() > 0.5 ? (lang === 'ru' ? 'Мальчик ♂' : 'Boy ♂') : (lang === 'ru' ? 'Девочка ♀' : 'Girl ♀'));
@@ -901,6 +956,7 @@ function renderUI() {
         bodyData.isPregnant = false; bodyData.pregnancyWeeks = 0; bodyData.pregnancyDays = 0; bodyData.babiesCount = 0; bodyData.babiesGenders = []; bodyData.currentSymptoms = [];
         bodyData.rolledTrimesters = { 1: false, 2: false, 3: false }; bodyData.activeComplication = null;
         bodyData.deliveryMethod = 'none';
+        bodyData.fetalDisease = null;
 
         saveSettingsDebounced(); renderUI(); updatePromptInjection(); 
         if (settings.isNotificationsEnabled) toastr.info(getText('toastResetPreg'));
