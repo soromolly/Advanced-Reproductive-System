@@ -56,10 +56,10 @@ const MONTHS = {
 };
 
 const TRANSLATIONS = {
-    title: '🧬 Репродуктивная Система',
+    title: '🧬 Система Репродукции V2',
     system: 'Система:', realism: 'Реализм', omegaverse: 'ОмегаВерс',
-    physiology: 'Физиология:', female: 'Женщина', female_omega: 'Женщина Омега', male_omega: 'Мужчина Омегa',
-    aiLogic: 'Знания ИИ:', ultrasound: 'УЗИ (20 нед)', medieval: 'Средневековье', knowsAll: 'Знает всё',
+    physiology: 'Физиология:', female: 'Женщина', female_omega: 'Ж-Омега', male_omega: 'М-Омеga',
+    aiLogic: 'Логика ИИ:', ultrasound: 'УЗИ (20 нед)', medieval: 'Средневековье', knowsAll: 'Знает всё',
     phaseRealism: 'Текущая фаза:', phaseOmega: 'Текущее состояние омеги:',
     termInRp: 'Срок в RP:', weeksShort: 'нед.', daysShort: 'дн.',
     wombMap: 'Карта плода:', babiesCount: 'Детей:', babiesSex: 'Пол:',
@@ -75,7 +75,7 @@ const TRANSLATIONS = {
     toastConception: '🚨 ЗАЧАТИЕ ПРОИЗОШЛО! Успешная имплантация в матке.',
     toastPregEnd: 'Срок беременности подошел к концу! Пора рожать.',
     pregnancy: 'Беременность 🤰', pregnancyOmega: 'Беременность (Омега) 🤰',
-    menstruation: 'Менструация 🩸', ovulation: 'Овуляция (Окно зачатия) ✨',
+    menstruation: 'Menstruation 🩸', ovulation: 'Овуляция (Окно зачатия) ✨',
     follicularLuteal: 'Фолликулярная/Лютеиновая фаза', heat: 'Течка (Пик фертильности) 🔥', quiescence: 'Период покоя',
     delayed: 'Задержка цикла ⚠️',
     symptomsTitle: '🎯 Симптомы организма:', fetusTitle: '👶 Развитие плода и тела:',
@@ -334,8 +334,9 @@ function checkConceptionTrigger(text) {
     const phase = getBodyPhase();
     const isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     
-    const hasVaginalTag = false; // Сюда можно будет вписать RegExp тегов
-    const hasAnalTag = false;
+    // ТЭГИ ПОЛНОСТЬЮ ВКЛЮЧЕНЫ И АКТИВНЫ!
+    const hasVaginalTag = /Ejaculation:\s*Vagina/i.test(text);
+    const hasAnalTag = /Ejaculation:\s*Anus/i.test(text);
 
     let canConceive = false;
 
@@ -350,7 +351,7 @@ function checkConceptionTrigger(text) {
         const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция внутрь|залил внутрь|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|излился внутрь|выплеснул внутрь/i.test(lowerText);
         
         if (hasEjaculationInside) {
-            const hasVaginalText = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vagina|pussy|лоно|нутро/i.test(lowerText);
+            const hasVaginalText = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vagina|pussy|лоно|нутро|матки|матку/i.test(lowerText);
             const hasAnalText = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|кишку/i.test(lowerText);
 
             if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalText && !hasAnalText) {
@@ -403,7 +404,7 @@ function triggerPregnancy(data) {
     data.postpartumDays = 0;
     
     data.fetalDisease = null;
-    if (!settings.disableFetalPathologies && Math.random() < 1.0) {
+    if (!settings.disableFetalPathologies && Math.random() < 0.03) {
         data.fetalDisease = getRandomFetalDisease();
     }
 
@@ -609,7 +610,7 @@ function renderUI() {
                 <strong style="color: ${isMiscarriage ? '#f87171' : '#34d399'}; display: block; margin-bottom: 3px;">💡 Рекомендации по уходу:</strong>
                 ${isMiscarriage ? `
                     • Обеспечьте полный физический и психоэмоциональный покой, полностью исключите стресс.<br>
-                    • Категорически запрещены любые тепловые процедуры (горячие ванны, сауна) и подъем тяжестей.<br>
+                    • Категорически запрещены любые тепловые процедуры (горячие ванны, sauna) и подъем тяжестей.<br>
                     • Принимайте легкие спазмолитики по согласованию и дайте репродуктивной системе очиститься.
                 ` : (isCS ? `
                     • Регулярно обрабатывайте антисептиками послеоперационный рубец на животе.<br>
@@ -894,7 +895,7 @@ function renderUI() {
         data.deliveryMethod = 'none';
         
         bodyData.fetalDisease = null;
-        if (!settings.disableFetalPathologies && Math.random() < 1.0) {
+        if (!settings.disableFetalPathologies && Math.random() < 0.03) {
             bodyData.fetalDisease = getRandomFetalDisease();
         }
         
