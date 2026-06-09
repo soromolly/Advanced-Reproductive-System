@@ -330,38 +330,21 @@ function checkConceptionTrigger(text) {
     const data = getChatBodyData();
     if (data.isPregnant || data.postpartumDays > 0) return;
 
-    const lowerText = text.toLowerCase();
     const phase = getBodyPhase();
-    const isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
+    const isFertile = phase.includes('Овуляция') || phase.includes('Течка');
     
-    // СВЕРХМОЩНАЯ РЕГУЛЯРКА: Ловит любые текстовые извращения ИИ (включая JSON структуры во всех регистрах)
-    const hasVaginalTag = /Ejaculation:\s*Vagina|CLIMAX[-_]V|climax[-_]v|Ejaculation_Vagina|vagina.*climax|climax.*vagina/i.test(text);
-    const hasAnalTag = /Ejaculation:\s*Anus|CLIMAX[-_]A|climax[-_]a|Ejaculation_Anus|anus.*climax|climax.*anus/i.test(text);
+    // СТРОГОЕ, ЧИСТОЕ СОВПАДЕНИЕ СТРОК БЕЗ РЕГУЛЯРНЫХ ВЫРАЖЕНИЙ
+    const hasVaginalTag = text.includes('');
+    const hasAnalTag = text.includes('');
 
     let canConceive = false;
 
+    // Проверка жестко по условиям пола и систем
     if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalTag) {
         canConceive = true;
     } else if (settings.mode === 'omegaverse') {
         if (settings.gender === 'female_omega' && hasVaginalTag) canConceive = true;
         if (settings.gender === 'male_omega' && hasAnalTag) canConceive = true;
-    }
-
-    // Логика фолбэка: срабатывает только если скрытых тегов вообще не обнаружено
-    if (!canConceive && !hasVaginalTag && !hasAnalTag) {
-        const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция внутрь|залил внутрь|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|излился внутрь|выплеснул внутрь/i.test(lowerText);
-        
-        if (hasEjaculationInside) {
-            const hasVaginalText = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vagina|pussy|лоно|нутро|матки|матку/i.test(lowerText);
-            const hasAnalText = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|кишку/i.test(lowerText);
-
-            if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalText && !hasAnalText) {
-                canConceive = true; 
-            } else if (settings.mode === 'omegaverse') {
-                if (settings.gender === 'female_omega' && hasVaginalText && !hasAnalText) canConceive = true;
-                if (settings.gender === 'male_omega' && hasAnalText && !hasVaginalText) canConceive = true; 
-            }
-        }
     }
 
     if (canConceive) {
@@ -534,10 +517,10 @@ function updatePromptInjection(isImmediateBirth = false) {
         }
         if (data.currentSymptoms?.length > 0) prompt += `Current Physical Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
         
-        // ОБНОВЛЕННЫЙ И АГРЕССИВНЫЙ ПРОМПТ — ЗАПРЕЩАЕМ СЛОВА "LOG" И "JSON"
-        prompt += `🚨 MANDATORY STORY MARKER DIRECTIVE FOR {{char}}: If a full climax/ejaculation occurred inside {{user}} within this turn, you MUST append exactly one specific hidden comment tag at the absolute end of your response text (after all narrative paragraphs).
-        Choose the exact string depending on location:
-        - If inside vagina: - If inside anus: - If inside mouth: CRITICAL RULES: Do NOT write JSON code block schemas (like {"log": "climax-v"}). Do NOT format it as a database code script. Copy the plain comment format character-for-character. If no ejaculation happens, do not append anything.\n`;
+        // КАТЕГОРИЧЕСКИЙ ПРОМПТ БЕЗ ТЕХНИЧЕСКИХ СЛОВ И ШАБЛОНОВ JSON. СТРОГИЙ КОПИПАСТ СТРОКИ.
+        prompt += `🚨 MANDATORY STORY MARKER DIRECTIVE FOR {{char}}: If a full climax or ejaculation explicitly occurs inside {{user}} within this response turn, you MUST append exactly one single specific text tag at the absolute end of your reply (after all narrative paragraphs).
+        Choose the exact text block based on the location:
+        - Если внутрь вагины, допиши ровно эту строчку: - Если внутрь ануса, допиши ровно эту строчку: - Если во рот, допиши ровно эту строчку: CRITICAL RULE: You MUST copy the plain comment line character-for-character. Do NOT output code logic schemas, do NOT write JSON formats (like {"log":...}), do NOT use data script blocks. Write the text verbatim. If no ejaculation happens, append absolutely nothing.\n`;
     }
 
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
@@ -612,7 +595,7 @@ function renderUI() {
                 <strong style="color: ${isMiscarriage ? '#f87171' : '#34d399'}; display: block; margin-bottom: 3px;">💡 Рекомендации по уходу:</strong>
                 ${isMiscarriage ? `
                     • Обеспечьте полный физический и психоэмоциональный покой, полностью исключите стресс.<br>
-                    • Категорически запрещены любые тепловые процедуры (горячие ванны, sauna) и подъем тяжестей.<br>
+                    • Категорически запрещены любые тепловые процедуры (горячие ванны, сауна) и подъем тяжестей.<br>
                     • Принимайте легкие спазмолитики по согласованию и дайте репродуктивной системе очиститься.
                 ` : (isCS ? `
                     • Регулярно обрабатывайте антисептиками послеоперационный рубец на животе.<br>
