@@ -334,33 +334,30 @@ function checkConceptionTrigger(text) {
     const phase = getBodyPhase();
     const isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     
-    // ТЭГИ ПОЛНОСТЬЮ ВКЛЮЧЕНЫ И АКТИВНЫ!
+    // 1. Проверка через ТЕГИ (ищем скрытый комментарий от ИИ)
     const hasVaginalTag = /Ejaculation:\s*Vagina/i.test(text);
     const hasAnalTag = /Ejaculation:\s*Anus/i.test(text);
 
+    // 2. Проверка через ТЕКСТ (на случай, если тегов нет или ИИ пишет литературно)
+    const hasEjaculationText = /кончил внутрь|излил семя|эякуляция внутрь|залил внутрь|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|излился внутрь|выплеснул внутрь/i.test(lowerText);
+    const hasVaginalText = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vagina|pussy|лоно|нутро|матки|матку/i.test(lowerText);
+    const hasAnalText = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|кишку/i.test(lowerText);
+
+    // Объединяем: фиксация действия происходит ИЛИ по тегу, ИЛИ по тексту
+    const isVaginalEjaculation = hasVaginalTag || (hasEjaculationText && hasVaginalText);
+    const isAnalEjaculation = hasAnalTag || (hasEjaculationText && hasAnalText);
+
     let canConceive = false;
 
-    if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalTag) {
-        canConceive = true;
+    // 3. Строгая проверка по правилам систем и полов персонажа:
+    if (settings.mode === 'realism' && settings.gender === 'female') {
+        // Реализм (Женщина) — только вагинально, анал игнорируется
+        if (isVaginalEjaculation) canConceive = true;
     } else if (settings.mode === 'omegaverse') {
-        if (settings.gender === 'female_omega' && hasVaginalTag) canConceive = true;
-        if (settings.gender === 'male_omega' && hasAnalTag) canConceive = true;
-    }
-
-    if (!canConceive && !hasVaginalTag && !hasAnalTag) {
-        const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция внутрь|залил внутрь|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|излился внутрь|выплеснул внутрь/i.test(lowerText);
-        
-        if (hasEjaculationInside) {
-            const hasVaginalText = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vagina|pussy|лоно|нутро|матки|матку/i.test(lowerText);
-            const hasAnalText = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|кишку/i.test(lowerText);
-
-            if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalText && !hasAnalText) {
-                canConceive = true; 
-            } else if (settings.mode === 'omegaverse') {
-                if (settings.gender === 'female_omega' && hasVaginalText && !hasAnalText) canConceive = true;
-                if (settings.gender === 'male_omega' && hasAnalText && !hasVaginalText) canConceive = true; 
-            }
-        }
+        // Омегаверс (Женщина-Омега) — только вагинально, анал игнорируется
+        if (settings.gender === 'female_omega' && isVaginalEjaculation) canConceive = true;
+        // Омегаверс (Мужчина-Омега) — только анал, вагина игнорируется
+        if (settings.gender === 'male_omega' && isAnalEjaculation) canConceive = true;
     }
 
     if (canConceive) {
