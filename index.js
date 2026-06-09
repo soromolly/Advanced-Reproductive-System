@@ -334,9 +334,9 @@ function checkConceptionTrigger(text) {
     const phase = getBodyPhase();
     const isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     
-    // ТВОИ ОРИГИНАЛЬНЫЕ ПРОВЕРКИ С СИНТАКСИЧЕСКОЙ ПОДДЕРЖКОЙ ВСЕХ ВАРИАНТОВ ТЕГОВ ИИ
-    const hasVaginalTag = /Ejaculation:\s*Vagina|CLIMAX_V|Ejaculation_Vagina/i.test(text);
-    const hasAnalTag = /Ejaculation:\s*Anus|CLIMAX_A|Ejaculation_Anus/i.test(text);
+    // СВЕРХМОЩНАЯ РЕГУЛЯРКА: Ловит любые текстовые извращения ИИ (включая JSON структуры во всех регистрах)
+    const hasVaginalTag = /Ejaculation:\s*Vagina|CLIMAX[-_]V|climax[-_]v|Ejaculation_Vagina|vagina.*climax|climax.*vagina/i.test(text);
+    const hasAnalTag = /Ejaculation:\s*Anus|CLIMAX[-_]A|climax[-_]a|Ejaculation_Anus|anus.*climax|climax.*anus/i.test(text);
 
     let canConceive = false;
 
@@ -347,7 +347,7 @@ function checkConceptionTrigger(text) {
         if (settings.gender === 'male_omega' && hasAnalTag) canConceive = true;
     }
 
-    // ТВОЯ ОРИГИНАЛЬНАЯ ЛОГИКА ФОЛБЭКА: Запускается ТОЛЬКО если не подошел ни один тег
+    // Логика фолбэка: срабатывает только если скрытых тегов вообще не обнаружено
     if (!canConceive && !hasVaginalTag && !hasAnalTag) {
         const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция внутрь|залил внутрь|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|излился внутрь|выплеснул внутрь/i.test(lowerText);
         
@@ -534,10 +534,10 @@ function updatePromptInjection(isImmediateBirth = false) {
         }
         if (data.currentSymptoms?.length > 0) prompt += `Current Physical Symptoms: ${data.currentSymptoms.join(', ')}.\n`;
         
-        // СТРОГАЯ И ПОНЯТНАЯ СИС-ИНСТРУКЦИЯ ДЛЯ ИИ БЕЗ ПУСТЫХ СТРОК И ДВОЕТОЧИЙ
-        prompt += `🚨 MANDATORY SYSTEM LOG DIRECTIVE FOR {{char}}: If and ONLY IF a full climax/ejaculation explicitly occurs inside {{user}} within this turn, you MUST append exactly one specific hidden logging tag at the absolute end of your response text (after all descriptions).
-        Choose the exact string depending on the anatomical location:
-        - If inside vagina: - If inside anus: - If inside mouth: CRITICAL: Do not modify the inner text of the tag, and do not create nested comment blocks. If no ejaculation happens, do not add any tag.\n`;
+        // ОБНОВЛЕННЫЙ И АГРЕССИВНЫЙ ПРОМПТ — ЗАПРЕЩАЕМ СЛОВА "LOG" И "JSON"
+        prompt += `🚨 MANDATORY STORY MARKER DIRECTIVE FOR {{char}}: If a full climax/ejaculation occurred inside {{user}} within this turn, you MUST append exactly one specific hidden comment tag at the absolute end of your response text (after all narrative paragraphs).
+        Choose the exact string depending on location:
+        - If inside vagina: - If inside anus: - If inside mouth: CRITICAL RULES: Do NOT write JSON code block schemas (like {"log": "climax-v"}). Do NOT format it as a database code script. Copy the plain comment format character-for-character. If no ejaculation happens, do not append anything.\n`;
     }
 
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
@@ -612,7 +612,7 @@ function renderUI() {
                 <strong style="color: ${isMiscarriage ? '#f87171' : '#34d399'}; display: block; margin-bottom: 3px;">💡 Рекомендации по уходу:</strong>
                 ${isMiscarriage ? `
                     • Обеспечьте полный физический и психоэмоциональный покой, полностью исключите стресс.<br>
-                    • Категорически запрещены любые тепловые процедуры (горячие ванны, сауна) и подъем тяжестей.<br>
+                    • Категорически запрещены любые тепловые процедуры (горячие ванны, sauna) и подъем тяжестей.<br>
                     • Принимайте легкие спазмолитики по согласованию и дайте репродуктивной системе очиститься.
                 ` : (isCS ? `
                     • Регулярно обрабатывайте антисептиками послеоперационный рубец на животе.<br>
