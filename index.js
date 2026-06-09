@@ -377,8 +377,8 @@ function checkConceptionTrigger(text) {
     const phase = getBodyPhase();
     const isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     
-    const hasVaginalTag = //i.test(text);
-    const hasAnalTag = //i.test(text);
+    const hasVaginalTag = /(?:)/i.test(text);
+    const hasAnalTag = /(?:)/i.test(text);
 
     let canConceive = false;
 
