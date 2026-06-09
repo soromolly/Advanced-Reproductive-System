@@ -334,30 +334,34 @@ function checkConceptionTrigger(text) {
     const phase = getBodyPhase();
     const isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     
-    // 1. Проверка через ТЕГИ (ищем скрытый комментарий от ИИ)
-    const hasVaginalTag = /Ejaculation:\s*Vagina/i.test(text);
-    const hasAnalTag = /Ejaculation:\s*Anus/i.test(text);
-
-    // 2. Проверка через ТЕКСТ (на случай, если тегов нет или ИИ пишет литературно)
-    const hasEjaculationText = /кончил внутрь|излил семя|эякуляция внутрь|залил внутрь|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|излился внутрь|выплеснул внутрь/i.test(lowerText);
-    const hasVaginalText = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vagina|pussy|лоно|нутро|матки|матку/i.test(lowerText);
-    const hasAnalText = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|кишку/i.test(lowerText);
-
-    // Объединяем: фиксация действия происходит ИЛИ по тегу, ИЛИ по тексту
-    const isVaginalEjaculation = hasVaginalTag || (hasEjaculationText && hasVaginalText);
-    const isAnalEjaculation = hasAnalTag || (hasEjaculationText && hasAnalText);
+    // ТВОИ ОРИГИНАЛЬНЫЕ ПРОВЕРКИ ТЕГОВ С ИСПРАВЛЕННЫМ СИНТАКСИСОМ
+    const hasVaginalTag = /Ejaculation:\s*Vagina|CLIMAX_V/i.test(text);
+    const hasAnalTag = /Ejaculation:\s*Anus|CLIMAX_A/i.test(text);
 
     let canConceive = false;
 
-    // 3. Строгая проверка по правилам систем и полов персонажа:
-    if (settings.mode === 'realism' && settings.gender === 'female') {
-        // Реализм (Женщина) — только вагинально, анал игнорируется
-        if (isVaginalEjaculation) canConceive = true;
+    if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalTag) {
+        canConceive = true;
     } else if (settings.mode === 'omegaverse') {
-        // Омегаверс (Женщина-Омега) — только вагинально, анал игнорируется
-        if (settings.gender === 'female_omega' && isVaginalEjaculation) canConceive = true;
-        // Омегаверс (Мужчина-Омега) — только анал, вагина игнорируется
-        if (settings.gender === 'male_omega' && isAnalEjaculation) canConceive = true;
+        if (settings.gender === 'female_omega' && hasVaginalTag) canConceive = true;
+        if (settings.gender === 'male_omega' && hasAnalTag) canConceive = true;
+    }
+
+    // ТВОЯ ОРИГИНАЛЬНАЯ ЛОГИКА ФОЛБЭКА: Запускается ТОЛЬКО если не подошел ни один тег
+    if (!canConceive && !hasVaginalTag && !hasAnalTag) {
+        const hasEjaculationInside = /кончил внутрь|излил семя|эякуляция внутрь|залил внутрь|узел|сцепка|завязал узел|cum inside|ejaculation inside|creampie|knotting|излился внутрь|выплеснул внутрь/i.test(lowerText);
+        
+        if (hasEjaculationInside) {
+            const hasVaginalText = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vagina|pussy|лоно|нутро|матки|матку/i.test(lowerText);
+            const hasAnalText = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|кишку/i.test(lowerText);
+
+            if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalText && !hasAnalText) {
+                canConceive = true; 
+            } else if (settings.mode === 'omegaverse') {
+                if (settings.gender === 'female_omega' && hasVaginalText && !hasAnalText) canConceive = true;
+                if (settings.gender === 'male_omega' && hasAnalText && !hasVaginalText) canConceive = true; 
+            }
+        }
     }
 
     if (canConceive) {
@@ -532,7 +536,7 @@ function updatePromptInjection(isImmediateBirth = false) {
         
         prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has explicitly occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
         Choose exactly one that matches the finished action and write it verbatim:
-        - If ejaculation has fully completed inside the vagina: - If ejaculation has fully completed inside the anus: - If ejaculation has fully completed inside the mouth/oral: ⚠️ STRICTION LIMITATION: You MUST only append this tag at the very end when the action is truly COMPLETE and the climax has happened. Do not include this tag for foreplay or ongoing descriptions. Do not append if no climax/ejaculation occurs.\n`;
+        - Если эякуляция произошла в вагину: - Если эякуляция произошла в анус: - Если эякуляция произошла в рот: ⚠️ STRICTION LIMITATION: You MUST only append this tag at the very end when the action is truly COMPLETE and the climax has happened. Do not include this tag for foreplay or ongoing descriptions. Do not append if no climax/ejaculation occurs.\n`;
     }
 
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
@@ -607,7 +611,7 @@ function renderUI() {
                 <strong style="color: ${isMiscarriage ? '#f87171' : '#34d399'}; display: block; margin-bottom: 3px;">💡 Рекомендации по уходу:</strong>
                 ${isMiscarriage ? `
                     • Обеспечьте полный физический и психоэмоциональный покой, полностью исключите стресс.<br>
-                    • Категорически запрещены любые тепловые процедуры (горячие ванны, sauna) и подъем тяжестей.<br>
+                    • Категорически запрещены любые тепловые процедуры (горячие ванны, сауна) и подъем тяжестей.<br>
                     • Принимайте легкие спазмолитики по согласованию и дайте репродуктивной системе очиститься.
                 ` : (isCS ? `
                     • Регулярно обрабатывайте антисептиками послеоперационный рубец на животе.<br>
