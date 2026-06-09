@@ -57,10 +57,10 @@ const MONTHS = {
 
 const TRANSLATIONS = {
     ru: {
-        title: '🧬 Репродуктивная Система',
+        title: '🧬 Система Репродукции V2',
         system: 'Система:', realism: 'Реализм', omegaverse: 'ОмегаВерс',
-        physiology: 'Физиология:', female: 'Женщина', female_omega: 'Женщина Омега', male_omega: 'Мужчина Омегa',
-        aiLogic: 'Знание ИИ:', ultrasound: 'УЗИ (20 нед)', medieval: 'Средневековье', knowsAll: 'Знает всё',
+        physiology: 'Физиология:', female: 'Женщина', female_omega: 'Ж-Омега', male_omega: 'М-Омеga',
+        aiLogic: 'Логика ИИ:', ultrasound: 'УЗИ (20 нед)', medieval: 'Средневековье', knowsAll: 'Знает всё',
         phaseRealism: 'Текущая фаза:', phaseOmega: 'Текущее состояние омеги:',
         termInRp: 'Срок в RP:', weeksShort: 'нед.', daysShort: 'дн.',
         wombMap: 'Карта плода:', babiesCount: 'Детей:', babiesSex: 'Пол:',
@@ -377,8 +377,8 @@ function checkConceptionTrigger(text) {
     const phase = getBodyPhase();
     const isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     
-    const hasVaginalTag = //i.test(text);
-    const hasAnalTag = //i.test(text);
+    const hasVaginalTag = false; // Сюда можно будет вписать RegExp тегов
+    const hasAnalTag = false;
 
     let canConceive = false;
 
