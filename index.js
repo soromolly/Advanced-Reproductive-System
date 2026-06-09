@@ -13,7 +13,7 @@ const EXTENSION_NAME = 'st-advanced-reproductive-system';
 const DEFAULT_SETTINGS = {
     isEnabled: true,
     isNotificationsEnabled: true,
-    disableFetalPathologies: false, // Новая настройка: отключение врожденных болезней плода
+    disableFetalPathologies: false, // Отключение врожденных болезней плода
     mode: 'realism',       
     gender: 'female',      
     aiAwareness: 'dynamic', 
@@ -40,7 +40,7 @@ function createDefaultBodyData() {
         deliveryMethod: 'none', // Варианты: 'none', 'natural', 'c_section', 'miscarriage'
         childrenList: [],
         contraception: 'none',
-        fetalDisease: null // Добавлено поле для врожденной болезни плода
+        fetalDisease: null 
     };
 }
 
@@ -150,7 +150,6 @@ function getChatBodyData() {
     if (data.postpartumDays === undefined) data.postpartumDays = 0;
     if (data.deliveryMethod === undefined) data.deliveryMethod = 'none';
     if (!data.childrenList) data.childrenList = [];
-    if (!data.rolledTrimesters) data.rolledTrimesters = { 1: false, 2: false, 3: false };
     if (!data.rolledTrimesters) data.rolledTrimesters = { 1: false, 2: false, 3: false };
     if (data.contraception === undefined) data.contraception = 'none'; 
     if (data.fetalDisease === undefined) data.fetalDisease = null;
@@ -397,10 +396,10 @@ function checkConceptionTrigger(text) {
             const hasVaginalText = /вагинально|в писю|в киску|внутрь влагалища|влагалище|vagina|pussy|лоно|нутро/i.test(lowerText);
             const hasAnalText = /анально|в анус|в попу|в задницу|прямую кишку|anal|anus|ass|кишку/i.test(lowerText);
 
-            if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalText && !hasAnalTag) {
+            if (settings.mode === 'realism' && settings.gender === 'female' && hasVaginalText && !hasAnalText) {
                 canConceive = true; 
             } else if (settings.mode === 'omegaverse') {
-                if (settings.gender === 'female_omega' && hasVaginalText && !hasAnalTag) canConceive = true;
+                if (settings.gender === 'female_omega' && hasVaginalText && !hasAnalText) canConceive = true;
                 if (settings.gender === 'male_omega' && hasAnalText && !hasVaginalText) canConceive = true; 
             }
         }
@@ -446,7 +445,6 @@ function triggerPregnancy(data) {
     data.childrenList = [];
     data.postpartumDays = 0;
     
-    // Мизерный (3%) шанс врожденной болезни плода, если не отключено в настройках
     data.fetalDisease = null;
     if (!settings.disableFetalPathologies && Math.random() < 0.03) {
         data.fetalDisease = getRandomFetalDisease();
@@ -555,7 +553,6 @@ function updatePromptInjection(isImmediateBirth = false) {
             if (revealGenders) {
                 prompt += `[MEDICAL RECORD - ANATOMY SCAN (WEEK 20)]: Fetal development is sufficient to determine sex. Scans confirm the genders are: ${data.babiesGenders.join(', ')}.\n`;
                 
-                // Инжектируем врожденную болезнь, если она выпала и срок сканирования позволяет ее увидеть
                 if (data.fetalDisease && settings.aiAwareness !== 'hidden') {
                     prompt += `[MEDICAL ABNORMALITY DETECTED]: An ultrasound anatomy scan revealed a congenital fetal pathology: ${data.fetalDisease.name} — ${data.fetalDisease.desc}\n`;
                 }
@@ -605,12 +602,11 @@ function renderUI() {
 
     let fetusHtml = '';
     let eddHtml = ''; 
-    let diseaseHtml = ''; // HTML для вывода патологии в панели
+    let diseaseHtml = ''; 
 
     if (data.isPregnant && (data.pregnancyWeeks > 0 || data.cycleDay > settings.cycleLength)) {
         const fetus = getFetusData(data.pregnancyWeeks);
         
-        // Отображение врожденной болезни на УЗИ (после 20 недели)
         if (data.fetalDisease && data.pregnancyWeeks >= 20 && settings.aiAwareness !== 'hidden') {
             diseaseHtml = `<div style="margin-top: 8px; padding: 8px; background: rgba(239, 68, 68, 0.12); border-left: 3px solid #ef4444; border-radius: 4px; text-align: left; font-size: 0.9em; line-height: 1.4;">
                 <strong style="color: #f87171; display: block; margin-bottom: 3px;">⚠️ Врожденная патология плода (УЗИ):</strong>
@@ -864,13 +860,11 @@ function renderUI() {
         saveSettingsDebounced();
     });
 
-    // Обработчик переключателя врожденных патологий
     $('#repro-disable-pathologies').off('change').on('change', function() {
         settings.disableFetalPathologies = $(this).is(':checked');
         saveSettingsDebounced();
         
         const bodyData = getChatBodyData();
-        // Если ставим галочку "отключить", стираем уже присвоенную болезнь у текущей Б
         if (settings.disableFetalPathologies) {
             bodyData.fetalDisease = null;
         }
@@ -936,7 +930,6 @@ function renderUI() {
         bodyData.babiesGenders = [];
         data.deliveryMethod = 'none';
         
-        // Ручной запуск также проверяет шанс врожденной патологии
         bodyData.fetalDisease = null;
         if (!settings.disableFetalPathologies && Math.random() < 0.03) {
             bodyData.fetalDisease = getRandomFetalDisease();
