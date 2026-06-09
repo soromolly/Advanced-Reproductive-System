@@ -403,7 +403,7 @@ function triggerPregnancy(data) {
     data.postpartumDays = 0;
     
     data.fetalDisease = null;
-    if (!settings.disableFetalPathologies && Math.random() < 0.03) {
+    if (!settings.disableFetalPathologies && Math.random() < 1.0) {
         data.fetalDisease = getRandomFetalDisease();
     }
 
@@ -894,7 +894,7 @@ function renderUI() {
         data.deliveryMethod = 'none';
         
         bodyData.fetalDisease = null;
-        if (!settings.disableFetalPathologies && Math.random() < 0.03) {
+        if (!settings.disableFetalPathologies && Math.random() < 1.0) {
             bodyData.fetalDisease = getRandomFetalDisease();
         }
         
