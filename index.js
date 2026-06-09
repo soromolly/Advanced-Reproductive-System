@@ -57,10 +57,10 @@ const MONTHS = {
 
 const TRANSLATIONS = {
     ru: {
-        title: '🧬 Репродуктивная Система',
+        title: '🧬 Система Репродукции V2',
         system: 'Система:', realism: 'Реализм', omegaverse: 'ОмегаВерс',
-        physiology: 'Физиология:', female: 'Женщина', female_omega: 'Женщина Омега', male_omega: 'Мужчина Омегa',
-        aiLogic: 'Знания ИИ:', ultrasound: 'УЗИ (20 нед)', medieval: 'Средневековье', knowsAll: 'Знает всё',
+        physiology: 'Физиология:', female: 'Женщина', female_omega: 'Ж-Омега', male_omega: 'М-Омеga',
+        aiLogic: 'Логика ИИ:', ultrasound: 'УЗИ (20 нед)', medieval: 'Средневековье', knowsAll: 'Знает всё',
         phaseRealism: 'Текущая фаза:', phaseOmega: 'Текущее состояние омеги:',
         termInRp: 'Срок в RP:', weeksShort: 'нед.', daysShort: 'дн.',
         wombMap: 'Карта плода:', babiesCount: 'Детей:', babiesSex: 'Пол:',
@@ -76,7 +76,7 @@ const TRANSLATIONS = {
         toastConception: '🚨 ЗАЧАТИЕ ПРОИЗОШЛО! Успешная имплантация в матке.',
         toastPregEnd: 'Срок беременности подошел к концу! Пора рожать.',
         pregnancy: 'Беременность 🤰', pregnancyOmega: 'Беременность (Омега) 🤰',
-        menstruation: 'Менструация 🩸', ovulation: 'Овуляция (Окно зачатия) ✨',
+        menstruation: 'Menstruation 🩸', ovulation: 'Овуляция (Окно зачатия) ✨',
         follicularLuteal: 'Фолликулярная/Лютеиновая фаза', heat: 'Течка (Пик фертильности) 🔥', quiescence: 'Период покоя',
         delayed: 'Задержка цикла ⚠️',
         symptomsTitle: '🎯 Симптомы организма:', fetusTitle: '👶 Развитие плода и тела:',
@@ -377,8 +377,8 @@ function checkConceptionTrigger(text) {
     const phase = getBodyPhase();
     const isFertile = phase.includes('Овуляция') || phase.includes('Течка') || phase.includes('Ovulation') || phase.includes('Heat');
     
-    const hasVaginalTag = /(?:)/i.test(text);
-    const hasAnalTag = /(?:)/i.test(text);
+    const hasVaginalTag = //i.test(text);
+    const hasAnalTag = //i.test(text);
 
     let canConceive = false;
 
@@ -578,7 +578,7 @@ function updatePromptInjection(isImmediateBirth = false) {
         
         prompt += `🚨 CRITICAL SYSTEM LOG DIRECTIVE FOR {{char}}: At the absolute end of your response text, you MUST append a hidden HTML comment summary ONLY IF a full climax/ejaculation has explicitly occurred inside {{user}} WITHIN THIS SPECIFIC RESPONSE. 
         Choose exactly one that matches the finished action and write it verbatim:
-        - If ejaculation has fully completed inside the vagina: - If ejaculation has fully completed inside the anus: - If ejaculation has fully completed inside the mouth/oral: ⚠️ STRICTION LIMITATION: You MUST only append this tag at the very end when the action is truly COMPLETE and the climax has happened. Do not include this tag for foreplay or ongoing descriptions. Do not append if no climax/ejaculation occurs.\n`;
+        - If ejaculation has fully completed inside the vagina: - If ejaculation has fully completed inside the anus: - If ejaculation has fully completed inside the mouth/oral: ⚠️ STRICT LIMITATION: You MUST only append this tag at the very end when the action is truly COMPLETE and the climax has happened. Do not include this tag for foreplay or ongoing descriptions. Do not append if no climax/ejaculation occurs.\n`;
     }
 
     setExtensionPrompt(EXTENSION_NAME, prompt, extension_prompt_types.IN_CHAT, 0);
@@ -960,7 +960,7 @@ function renderUI() {
             const chatId = getCurrentChatId();
             settings.chatPregnancyData[chatId] = createDefaultBodyData();
             saveSettingsDebounced(); renderUI(); updatePromptInjection(); 
-            if (settings.isNotificationsEnabled) toastr.warning(getText('toastResetAll'));
+            if (settings.isNotificationsEnabled) toastr.warning(getText('warningResetAll'));
         }
     });
 }
