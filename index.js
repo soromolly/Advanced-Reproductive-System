@@ -459,7 +459,7 @@ function triggerPregnancy(data) {
     // Бросок на врожденную патологию плода (~3% шанс)
     data.fetalDisease = null;
     if (settings.isFetalPathologyEnabled) {
-        if (Math.random() * 100 < 99) {
+        if (Math.random() * 100 < 3) {
             data.fetalDisease = getRandomFetalDisease();
         }
     }
