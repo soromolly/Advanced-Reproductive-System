@@ -302,7 +302,7 @@ function advanceBodyTime(days) {
     if (data.isPregnant) {
         if (data.activeComplication && data.activeComplication.id === 'miscarriage_threat_early' && data.activeComplication.isDiscovered) {
             for (let i = 0; i < days; i++) {
-                if (Math.random() * 100 < 99) { 
+                if (Math.random() * 100 < 10) { 
                     processMiscarriageTrigger();
                     return; 
                 }
