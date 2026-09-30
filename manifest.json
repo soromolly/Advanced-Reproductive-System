@@ -1,11 +1,11 @@
 {
-    "display_name": "Advanced Reproductive System",
+    "display_name": "ТЕСТ Advanced Reproductive System",
     "loading_order": 10,
     "requires": [],
     "optional": [],
     "js": "index.js",
     "css": "style.css",
     "author": "soromolly",
-    "version": "1.0.5",
-    "description": "Автономное отслеживание цикла, течки и скрытой от ИИ беременности на основе RP-дат из ворлдбита."
+    "version": "2.0.0",
+    "description": "Автономное отслеживание цикла, течки и скрытой от ИИ беременности."
 }
