@@ -619,14 +619,21 @@ function bindGlobalEvents() {
         }
 
         if (entity.isPregnant && (entity.isDiscovered || !entity.isSecretConception)) { 
-            const weeks = parseInt(root.find('#repro-input-weeks').val(), 10) || 0;
-            const days = parseInt(root.find('#repro-input-days').val(), 10) || 0;
-            entity.pregnancyWeeks = weeks; 
-            entity.pregnancyDays = Math.max(0, Math.min(6, days)); 
-            entity.pregnancyDaysTotal = (weeks * 7) + entity.pregnancyDays;
+            const weeksInput = root.find('#repro-input-weeks');
+            if (weeksInput.length && weeksInput.val() !== '') {
+                const weeks = parseInt(weeksInput.val(), 10) || 0;
+                const daysInput = root.find('#repro-input-days');
+                const days = (daysInput.length && daysInput.val() !== '') ? parseInt(daysInput.val(), 10) || 0 : 0;
+                entity.pregnancyWeeks = weeks; 
+                entity.pregnancyDays = Math.max(0, Math.min(6, days)); 
+                entity.pregnancyDaysTotal = (weeks * 7) + entity.pregnancyDays;
+                logReproEvent(`[MANUAL PREGNANCY SET] [${entity.key.toUpperCase()}] Term updated to ${weeks}w ${entity.pregnancyDays}d (total days: ${entity.pregnancyDaysTotal}).`);
+            }
         } else if (entity.postpartumDays === 0 && !entity.isNestActive) { 
             const dayInput = root.find('#repro-input-day');
-            if (dayInput.length) entity.cycleDay = parseInt(dayInput.val(), 10) || 1; 
+            if (dayInput.length && dayInput.val() !== '') {
+                entity.cycleDay = parseInt(dayInput.val(), 10) || 1; 
+            }
         }
 
         saveSettingsDebounced(); 
