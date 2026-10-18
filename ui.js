@@ -485,11 +485,11 @@ export function renderUI({ settings, chatData, activeTab, isMenuCollapsed }) {
                     <input type="number" id="repro-input-maxweeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 10px; border-radius: 6px; width: 55%;" value="${currentEntity.maxPregnancyWeeks || 40}" min="1" max="50"/>
                 </div>` : ''}
                 
-                ${isEggGravid ? `
+                ${isCurrentlyPregnantDiscovered ? `
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <label style="font-size: 0.9em; opacity: 0.85;">${getText('pregnancyWeekLabel', lang)}</label>
                         <div style="display: flex; gap: 6px; width: 55%;">
-                            <input type="number" id="repro-input-weeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 8px; border-radius: 6px; width: 50%;" value="${currentEntity.pregnancyWeeks}" min="0" max="6"/>
+                            <input type="number" id="repro-input-weeks" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 8px; border-radius: 6px; width: 50%;" value="${currentEntity.pregnancyWeeks}" min="0" max="${isOviposition ? 6 : (currentEntity.maxPregnancyWeeks || 40)}"/>
                             <input type="number" id="repro-input-days" style="background: var(--input-bg, #0f172a); border: 1px solid var(--input-border, #334155); color: var(--text-color, #f8fafc); padding: 6px 8px; border-radius: 6px; width: 50%;" value="${currentEntity.pregnancyDays || 0}" min="0" max="6"/>
                         </div>
                     </div>
