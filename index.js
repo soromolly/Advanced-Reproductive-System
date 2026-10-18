@@ -59,6 +59,7 @@ let isMenuCollapsed = true;
 let activeTab = 'user';
 let activeChatId = null;
 let pendingUserTimeskipDays = 0;
+let skipNextDateSync = false;
 const processedBirthMessages = new Set();
 const processedLayMessages = new Set();
 const processedHatchMessages = new Set();
@@ -184,6 +185,13 @@ function applyDateForwardOnly(data, parsedDate, source) {
     }
 
     if (data.lastRpDate === newDateStr) {
+        return 'same';
+    }
+
+    if (skipNextDateSync) {
+        skipNextDateSync = false;
+        data.lastRpDate = newDateStr;
+        logReproEvent(`[${source} DATE SYNC] Manual date override accepted: ${newDateStr}. Biological clock unchanged.`);
         return 'same';
     }
 
@@ -614,6 +622,11 @@ function bindGlobalEvents() {
                 parseInt(normalized.split('-')[1], 10) - 1,
                 parseInt(normalized.split('-')[2], 10)
             );
+            
+            if (data.lastRpDate !== normalized) {
+                skipNextDateSync = true;
+            }
+            
             data.lastRpDate = normalized;
             logReproEvent(`[MANUAL DATE SET] User manually set date to ${normalized} (timestamp ${manualDays}).`);
         }
@@ -757,6 +770,7 @@ jQuery(async () => {
                 processedHatchMessages.clear();
                 lastProcessedMessageUid = null;
                 pendingUserTimeskipDays = 0;
+                skipNextDateSync = false;
                 loadSettings(); 
             });
         }
